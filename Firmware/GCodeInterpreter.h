@@ -5,8 +5,6 @@
 #include "Arduino.h"
 
 
-char buffer[MAX_BUF];
-int buffSize;
 
 void help();
 void displayVersion();

@@ -1,26 +1,26 @@
 #include "configuration.h"
 #include "GCodeInterpreter.h"
+#include "Laser.h"
 
+char serialMsg[maxByteNum + 1]; //extra block of memory for '\0\'
+int numBytes;
+int code;
 
-void processCode(char message) {
+void processCode(int code) {
 
 	//check if empty or null
-	if (message == NULL) return;
-	int cmd;
-	cmd = parsecode(message);
-
-	switch (cmd) {
-	case 0:
-		//function0()
-		break;
+	if (code == NULL) return;
+	
+	switch (code) {
+	
 	case 1:
-		//function1();
+		initializeLaser();
 		break;
 	case 2:
-		//function2();
+		laserOn();
 		break;
 	case 20:
-		//function20();
+		laserOff();
 		break;
 	case 21:
 		//function21();
@@ -33,11 +33,7 @@ void processCode(char message) {
 	}
 }
 
-int parsecode(char message) {
-	
 
-	return atoi(message);	
-}
 
 
 void help() {
@@ -60,7 +56,6 @@ void displayVersion() {
 void reset() {
 
 	//Ready to receive input from serial line - intialize buffer array
-	buffSize = 0;
-	buffer[0] = ';';
-	Serial.println(">");
+	numBytes = 0;
+	serialMessage = { 0 };
 }

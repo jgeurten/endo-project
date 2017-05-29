@@ -5,32 +5,40 @@
 
 void initializeLaser()
 {
-
+	Serial.begin(BAUD_RATE);
+	pinMode(LASER_ENABLE_PIN, OUTPUT);
+	pinMode(LASER_PWM_PIN, OUTPUT);
+	digitalWrite(LASER_ENABLE_PIN, LOW);
+	digitalWrite(LASER_PWM_PIN, LOW);
+	laserOn = false;
 }
 
 void laserOn()
 {
-
+	if (!laserOn) {
+		digitalWrite(LASER_ENABLE_PIN, HIGH);
+		laserOn = true;
+	}
+	else
+		return;
 }
 
 void laserOff()
 {
-
+	if (laserOn) {
+		digitalWrite(LASER_ENABLE_PIN, LOW);
+		laserOn = false;
+	}
+	else
+		return;
 }
 
 void laserPWM()
 {
-
+	//too add: using interrupt service routine of clock 
 }
 
 bool isLaserOn() {
 
-	//get laser status from function eg. #20
-
-	/*
-	if (LASER_ENABLE_PIN == HIGH)
-	return true;
-	else
-	return false;
-	*/
+	return laserOn;
 }

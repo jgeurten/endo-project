@@ -5,10 +5,13 @@
 
 #include "Arduino.h"
 
+//functions:
+
 void initializeLaser();
 void laserOn();
 void laserOff();
-bool isLaserOn();
 void laserPWM();
+
+bool isLaserOn();
 
 #endif // !LASER_H

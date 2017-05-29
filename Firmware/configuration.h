@@ -10,9 +10,9 @@
 #define LASER_PWM_PIN 9 //PWM pin 
 #define LASER_ENABLE_PIN 10
 
-#define MAX_BUF 4
+#define maxByteNum 1
 
-
+bool laserOn;
 
 
 #endif //CONFIGURATION_H
