@@ -17,12 +17,21 @@ SET(CMAKE_AUTORCC ON)
 
 FIND_PACKAGE(OpenCV REQUIRED NO_MODULE)
 
+file(GLOB EndoScannerArduinoFirmware_headers RELATIVE "EndoScannerArduinoFirmware" "*.h")
+file(GLOB EndoScannerArduinoFirmware_Sources RELATIVE "EndoScannerArduinoFirmware" "*.cpp")
+
 ADD_EXECUTABLE(EndoScanner
+	
+	#Source files
 	main.cpp
-	MainWindow.h
 	MainWindow.cpp
-	Serial.h
 	Serial.cpp
+	${EndoScannerArduinoFirmware_sources}
+
+	#Header files
+	MainWindow.h
+	Serial.h
+	${EndoScannerArduinoFirmware_headers}
 	)
 
 TARGET_LINK_LIBRARIES (EndoScanner
