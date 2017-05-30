@@ -8,17 +8,20 @@ bool isLaserOn;
 void initializeLaser()
 {
 	Serial.begin(BAUD_RATE);
+	pinMode(LED_BUILTIN, OUTPUT);
 	pinMode(LASER_ENABLE_PIN, OUTPUT);
 	pinMode(LASER_PWM_PIN, OUTPUT);
 	digitalWrite(LASER_ENABLE_PIN, LOW);
 	digitalWrite(LASER_PWM_PIN, LOW);
 	isLaserOn = false;
+  //digitalWrite(LED_BUILTIN, HIGH);
 }
 
 void laserOn()
 {
 	if (!isLaserOn) {
-		digitalWrite(LASER_ENABLE_PIN, HIGH);
+		//digitalWrite(LASER_ENABLE_PIN, HIGH);
+		digitalWrite(LED_BUILTIN, HIGH);
 		isLaserOn = true;
 	}
 	else
@@ -28,7 +31,7 @@ void laserOn()
 void laserOff()
 {
 	if (isLaserOn) {
-		digitalWrite(LASER_ENABLE_PIN, LOW);
+		digitalWrite(LED_BUILTIN, LOW);
 		isLaserOn = false;
 	}
 	else
