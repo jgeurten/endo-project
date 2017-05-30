@@ -1,6 +1,9 @@
 //Local includes
 #include "MainWindow.h"
 #include "Serial.h"
+#include "C:\Users\jgeurten\Documents\endo-project\endo-project\EndoScannerArduinoFirmware\Laser.h"
+#include "C:\Users\jgeurten\Documents\endo-project\endo-project\EndoScannerArduinoFirmware\configuration.h"
+#include "C:\Users\jgeurten\Documents\endo-project\endo-project\EndoScannerArduinoFirmware\GCodeInterpreter.h"
 
 //OpenCv includes
 #include <opencv2/core/core.hpp>
@@ -28,7 +31,7 @@
 #include <qmediaplayer.h>
 #include <qcolor.h>
 #include <qdir.h>
-#include<qlineedit.h>
+#include <qlineedit.h>
 
 //MSDN includes
 #include <Windows.h>
