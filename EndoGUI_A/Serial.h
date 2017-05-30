@@ -22,7 +22,7 @@ private:
 public:
 	Serial(string portName);
 	~Serial();
-	bool write(char message);
+	bool write(string message);
 	bool isConnected();
 	
 };

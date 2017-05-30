@@ -9,6 +9,8 @@
 #include <stdlib.h>
 #include <string>
 
+#include <qdebug.h>
+
 using namespace std;
 
 Serial::Serial(std::string portName)
@@ -66,10 +68,12 @@ Serial::~Serial()
 	}
 }
 
-bool Serial::write(char message)	
+bool Serial::write(string message)	
 {
 	DWORD numBytesWritten; 
-	WriteFile(hSerial, &message, message, &numBytesWritten, NULL); //3rd argument set to NULL if asynchronous
+	int nbtoWrite = message.length();
+	
+	WriteFile(hSerial, message.c_str(), nbtoWrite, &numBytesWritten, NULL); //3rd argument set to NULL if asynchronous
 	if (numBytesWritten > 0) return true;
 	else return false;
 }
