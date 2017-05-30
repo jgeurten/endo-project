@@ -2,7 +2,7 @@
 #include "configuration.h"
 #include "GCodeInterpreter.h"
 
-char serialMsg[MAXBYTES + 1]; //extra block of memory for '\0\'
+ char serialMsg[MAXBYTES + 1]; //extra block of memory for '\0\'
 
 void setup() {
   initializeLaser();   // sets baud rate as well.
@@ -14,14 +14,14 @@ void loop()
   while (Serial.available() > 0)
   {
     delay(100);
-    for (int numBytes = 0; numBytes < MAXBYTES - 1; numBytes++) {
+   
+    for (int numBytes = 0; numBytes < MAXBYTES; numBytes++) {
 
       serialMsg[numBytes] = Serial.read();
       serialMsg[numBytes + 1] = '\0';    //serialMsg[1] = '\0'
     }
-    Serial.print(serialMsg);
+    //Serial.print(serialMsg);
     processCode(serialMsg);
-    reset();
   }
 }
 
