@@ -285,16 +285,15 @@ void MainWindow::paintEvent(QPaintEvent*)
 void MainWindow::toggleLaser()
 {
 	if (mcuConnected && !laserOn) {
-		comPort->write('9');
+		comPort->write("G21");
 		laserOn = true;
 	}
 	else if (mcuConnected && laserOn){
-		comPort->write('1');
+		comPort->write("G32");
 		laserOn = false;
 }
 	else {
 		statusBar()->showMessage(tr("Connect MCU First"), 2000);
-		
 	}
 }
 
