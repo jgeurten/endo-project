@@ -3,6 +3,8 @@
 #include "Laser.h"
 #include "Arduino.h"
 
+bool isLaserOn;
+
 void initializeLaser()
 {
 	Serial.begin(BAUD_RATE);
@@ -10,14 +12,14 @@ void initializeLaser()
 	pinMode(LASER_PWM_PIN, OUTPUT);
 	digitalWrite(LASER_ENABLE_PIN, LOW);
 	digitalWrite(LASER_PWM_PIN, LOW);
-	laserOn = false;
+	isLaserOn = false;
 }
 
 void laserOn()
 {
-	if (!laserOn) {
+	if (!isLaserOn) {
 		digitalWrite(LASER_ENABLE_PIN, HIGH);
-		laserOn = true;
+		isLaserOn = true;
 	}
 	else
 		return;
@@ -25,9 +27,9 @@ void laserOn()
 
 void laserOff()
 {
-	if (laserOn) {
+	if (isLaserOn) {
 		digitalWrite(LASER_ENABLE_PIN, LOW);
-		laserOn = false;
+		isLaserOn = false;
 	}
 	else
 		return;
@@ -38,7 +40,3 @@ void laserPWM()
 	//too add: using interrupt service routine of clock 
 }
 
-bool isLaserOn() {
-
-	return laserOn;
-}

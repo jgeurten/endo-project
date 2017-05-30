@@ -3,7 +3,7 @@
 #ifndef LASER_H
 #define LASER_H
 
-#include "Arduino.h"
+//#include "Arduino.h"
 
 //functions:
 
@@ -12,6 +12,6 @@ void laserOn();
 void laserOff();
 void laserPWM();
 
-bool isLaserOn();
+//bool isLaserOn;
 
 #endif // !LASER_H

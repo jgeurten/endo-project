@@ -1,27 +1,30 @@
+#include "Laser.h";
 #include "configuration.h"
-#include "gCodeInterpretter.h"
+#include "GCodeInterpreter.h"
+
+char serialMsg[MAXBYTES + 1]; //extra block of memory for '\0\'
 
 void setup() {
-  Serial.begin(BAUD_RATE);
-  displayVersion();
-  intializeLaser();//turn on quickly - check if turned on
-  reset(); //initialize buffSize and buffer[]
+  initializeLaser();   // sets baud rate as well.
+  //reset();
 }
 
-void loop() {
-
+void loop()
+{
   while (Serial.available() > 0)
   {
-    string msg = Serial.read();
-    Serial.print(msg);
-    if (buffSize < MAX_BUF - 1)
-      message[buffSize + 1] = msg;
-    if (msg == '\n' || msg == '\r') { //ensure message is fully received
-      buffer(buffSize) = msg;
-      processCode();
-      reset();
+    delay(100);
+    for (int numBytes = 0; numBytes < MAXBYTES - 1; numBytes++) {
+
+      serialMsg[numBytes] = Serial.read();
+      serialMsg[numBytes + 1] = '\0';    //serialMsg[1] = '\0'
     }
-
+    Serial.print(serialMsg);
+    processCode(serialMsg);
+    reset();
   }
-
 }
+
+
+
+
