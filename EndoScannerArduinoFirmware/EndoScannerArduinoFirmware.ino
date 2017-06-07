@@ -7,8 +7,11 @@ int count = 0;
 char first[MAXBYTES + 1];
 
 void setup() {
+ 
   initializeLaser();   // sets baud rate as well.
-  //reset();
+  interruptsOn();
+  attachInterrupt(digitalPinToInterrupt(ISR_PIN), buttonPress, CHANGE);
+  
 }
 
 void loop()
@@ -20,10 +23,14 @@ void loop()
       serialMsg[numBytes] = Serial.read();
       serialMsg[numBytes + 1] = '\0';    //serialMsg[1] = '\0'
     }
-    processCode(serialMsg); 
+    processCode(serialMsg);
   }
 }
 
+void buttonPress() {
+  laserButtonPress();
+}
 
-
-
+ISR(TIMER1_COMPA_vect) {
+  laserPWM();
+}
