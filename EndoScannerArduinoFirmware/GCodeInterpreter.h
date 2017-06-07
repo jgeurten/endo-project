@@ -2,9 +2,7 @@
 #ifndef GCODEINTERPRETER_H
 #define GCODEINTERPRETER_H
 
-//#include "Arduino.h"
-
-
+void interruptsOn();
 int parseMessage(char *msg);
 void help();
 void displayVersion();

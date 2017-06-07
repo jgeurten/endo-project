@@ -5,9 +5,23 @@
 #include <stdlib.h>
 #include <Arduino.h>
 
-//char serialMsg[MAXBYTES + 1]; //extra block of memory for '\0\'
-int numBytes;
 
+void interruptsOn()
+{
+  noInterrupts();
+  TCCR1A = 0;
+  TCCR1B = 0;
+  TCNT1 = 0;
+
+  OCR1A = 34286; // for 1Hz
+  //OCR1A = 17143;// for 2Hz
+
+  TCCR1B |= (1 << WGM12); //Clear on Timer Compare (CTC) mode
+  TCCR1B |= (1 << CS12); //prescalar = 256 - timer frq = 62500 Hz
+  TIMSK1 |= (1 << OCIE1A);  // enable timer compare interrupt
+  interrupts();
+
+}
 void processCode(char* msg) {
 
   //int GCode = parseMessage(msg[0%4]);
