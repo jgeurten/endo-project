@@ -31,50 +31,19 @@ cv::Mat Vision::subtractLaser(cv::Mat &laserOff, cv::Mat &laserOn)
 	cv::cvtColor(laserOn, bwLaserOn, CV_RGB2GRAY);
 	cv::subtract(bwLaserOn, bwLaserOff, gaussImg);
 
-	//Filter and remove noise - consider using median again
-	//cv::GaussianBlur(diffImg, gaussImg, cv::Size(15, 15), 12, 12);
 	cv::medianBlur(gaussImg, diffImg, 7);
-	//diffImg = diffImg - gaussImg;	
-	cv::threshold(diffImg, diffImg, 10, 255, cv::THRESH_TOZERO);
-	cv::imshow("thresh + gauss", diffImg);
-	//detect edges
-	//cv::Canny(diffImg, diffImg, 20, 50);
-	//cv::imshow("canny", diffImg);
-	
-	/*
-	for (int rowN = 0; rowN < laserOff.rows; rowN++)
-	{
-		int edges[640];
-		int count = 0;
-		for (int colN = 0; colN < laserOff.rows; colN++)
-		{
-			if (diffImg.at<uchar>(rowN, colN) > 0)	//cahnged from 250 <
-			{
-				edges[count] = colN;
-				count++;
-			}
-		}
-		for (int index = 0; index < count - 1; index++)
-		{
-			if (edges[index] > 0 && edges[index+1] > 0 && edges[index + 1] - edges[index] < 40)
-			{
-				int avgCol = (int)(edges[index + 1] + edges[index]) / 2;
-				lineImg.at<uchar>(rowN, avgCol) = 255;
-			}
-			
-		}
-	}
-	*/
+	cv::imshow("after median blur",diffImg);
 
+	cv::threshold(diffImg, diffImg, 10, 255, cv::THRESH_TOZERO);
+	
 	for (int rowN = 0; rowN < laserOff.rows; rowN++)
 	{
-		//int edges[640];
 		int count = 0;
 		int avgCol = 0;
 		for (int colN = 0; colN < laserOff.rows; colN++)
 		{
 			
-			if (diffImg.at<uchar>(rowN, colN) > 0)	//cahnged from 250 <
+			if (diffImg.at<uchar>(rowN, colN) > 0)	
 			{
 				avgCol += colN;
 				count++;
@@ -87,7 +56,6 @@ cv::Mat Vision::subtractLaser(cv::Mat &laserOff, cv::Mat &laserOn)
 		}
 	}
 
-	cv::imshow("Line Img", lineImg);
 	cv::cvtColor(lineImg, result, CV_GRAY2RGB);
 	return result;
 }
@@ -105,6 +73,5 @@ vector<cv::Vec4i> Vision::detectLaserLine(cv::Mat &laserOff, cv::Mat &laserOn)
 		vector<cv::Vec4i> nullVec(1, 0);
 		return nullVec;
 	}
-	cv::imshow("HoughLines", laserLineBW);
 	return lines;
 }

@@ -193,22 +193,33 @@ void MainWindow::createVideoWidget()
 void MainWindow::camera_button_clicked()
 {
 	//to come
+	int brightness = 2;
+	int contrast = 8;
 
 	cv::Mat laserOnImg, laserOffImg;
 	vector<cv::Vec4i> lines;
 	capture = cv::VideoCapture(0);
-	capture.open(0);
+	
 	cv::Point point1, point2;
 	
 	while (1) {
-		toggleLaser();	//TURN ON
-		capture >> laserOnImg;
+		
+		cv::namedWindow("Control", CV_WINDOW_NORMAL);
+		cvCreateTrackbar("Brightness", "Control", &brightness, 40);
+		cvCreateTrackbar("Contrast", "Control", &contrast, 40);
+		
+		capture.set(CV_CAP_PROP_CONTRAST, (double)contrast);
+		capture.set(CV_CAP_PROP_BRIGHTNESS, (double)brightness);
 
+		toggleLaser(); //ON
+		Sleep(200);
+		capture >> laserOnImg;
+		
 		toggleLaser();	//TURN OFF
+		Sleep(200);
 		capture >> laserOffImg;
 
-
-		lines = Vision::detectLaserLine(laserOffImg, laserOnImg);
+		lines = Vision::detectLaserLine(laserOnImg, laserOffImg);
 
 		for (int index = 0; index < lines.size(); index++)
 		{
@@ -217,11 +228,12 @@ void MainWindow::camera_button_clicked()
 			point2.x = lines[index][2];
 			point2.y = lines[index][3];
 
-			cv::line(laserOnImg, point1, point2, cv::Scalar(0, 255, 0), 4);
+			cv::line(laserOffImg, point1, point2, cv::Scalar(0, 255, 0), 4);
 		}
 
-		cv::imshow("Detect Laser", laserOnImg);
+		cv::imshow("Detect Laser", laserOffImg);
 		cv::waitKey(10);
+		
 	}
 
 }
