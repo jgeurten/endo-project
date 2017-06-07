@@ -26,11 +26,13 @@ ADD_EXECUTABLE(EndoScanner
 	main.cpp
 	MainWindow.cpp
 	Serial.cpp
-	${EndoScannerArduinoFirmware_sources}
+	Vision.cpp
+	${EndoScannerArduinoFirmware_Sources}
 
 	#Header files
 	MainWindow.h
 	Serial.h
+	Vision.h
 	${EndoScannerArduinoFirmware_headers}
 	)
 
