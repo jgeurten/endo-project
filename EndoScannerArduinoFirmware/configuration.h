@@ -5,12 +5,15 @@
 #define CONFIGURATION_H
 
 
-//Arduino definitions:
-#define BAUD_RATE 115200
-#define LASER_PWM_PIN 9 //PWM pin 
-#define LASER_ENABLE_PIN 10
+#define BAUD_RATE           115200
 
-#define MAXBYTES 3
+#define ISR_PIN             2
+#define LASER_ENABLE_PIN    9
+#define LASER_PWM_PIN       10 
+#define BUTTON_PIN          12
+
+#define ISRdelay            1500
+#define MAXBYTES            3
 
 
 #endif //CONFIGURATION_H
