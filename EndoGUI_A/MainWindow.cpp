@@ -1,6 +1,7 @@
 //Local includes
 #include "MainWindow.h"
 #include "Serial.h"
+#include "Vision.h"
 #include "C:\Users\jgeurten\Documents\endo-project\endo-project\EndoScannerArduinoFirmware\Laser.h"
 #include "C:\Users\jgeurten\Documents\endo-project\endo-project\EndoScannerArduinoFirmware\configuration.h"
 #include "C:\Users\jgeurten\Documents\endo-project\endo-project\EndoScannerArduinoFirmware\GCodeInterpreter.h"
@@ -42,6 +43,8 @@
 using namespace std;
 //using namespace cv;
 //constructor
+
+//class Vision;
 
 MainWindow::MainWindow(QWidget *parent)
 	:QMainWindow(parent)
@@ -159,7 +162,7 @@ void MainWindow::createVideoWidget()
 	connect(timer, SIGNAL(timeout()), this, SLOT(update_image()));
 }
 
-void MainWindow::camera_button_clicked()
+/*void MainWindow::camera_button_clicked()
 {
 	if (!playing) {
 		capture = cv::VideoCapture(0);
@@ -185,12 +188,49 @@ void MainWindow::camera_button_clicked()
 		timer->stop();
 	}
 }
+*/
+
+void MainWindow::camera_button_clicked()
+{
+	//to come
+
+	cv::Mat laserOnImg, laserOffImg;
+	vector<cv::Vec4i> lines;
+	capture = cv::VideoCapture(0);
+	capture.open(0);
+	cv::Point point1, point2;
+	
+	while (1) {
+		toggleLaser();	//TURN ON
+		capture >> laserOnImg;
+
+		toggleLaser();	//TURN OFF
+		capture >> laserOffImg;
+
+
+		lines = Vision::detectLaserLine(laserOffImg, laserOnImg);
+
+		for (int index = 0; index < lines.size(); index++)
+		{
+			point1.x = lines[index][0];
+			point1.y = lines[index][1];
+			point2.x = lines[index][2];
+			point2.y = lines[index][3];
+
+			cv::line(laserOnImg, point1, point2, cv::Scalar(0, 255, 0), 4);
+		}
+
+		cv::imshow("Detect Laser", laserOnImg);
+		cv::waitKey(10);
+	}
+
+}
 
 
 void MainWindow::update_image()
 {
 
-	if (capture.isOpened())
+  	if (capture.isOpened())
 	{
 		capture >> frame;
 		cv::Size s = frame.size();

@@ -20,6 +20,7 @@
 
 //Local includes
 #include "Serial.h"
+#include "Vision.h"
 
 //opencv includes
 #include <opencv2/core/core.hpp>
