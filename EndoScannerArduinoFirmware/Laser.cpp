@@ -3,25 +3,35 @@
 #include "Laser.h"
 #include "Arduino.h"
 
+
 bool isLaserOn;
+
+long prevTime = 0;
+long currTime = 0;
+
+volatile byte laserState;
+volatile bool pwmEnabled;
 
 void initializeLaser()
 {
 	Serial.begin(BAUD_RATE);
-	pinMode(LED_BUILTIN, OUTPUT);
+	
 	pinMode(LASER_ENABLE_PIN, OUTPUT);
 	pinMode(LASER_PWM_PIN, OUTPUT);
+ 
 	digitalWrite(LASER_ENABLE_PIN, LOW);
 	digitalWrite(LASER_PWM_PIN, LOW);
+
 	isLaserOn = false;
-  //digitalWrite(LED_BUILTIN, HIGH);
+	pwmEnabled = false;
+	laserState = LOW;
+
 }
 
 void laserOn()
 {
-	if (!isLaserOn) {
-		//digitalWrite(LASER_ENABLE_PIN, HIGH);
-		digitalWrite(LED_BUILTIN, HIGH);
+	if (!isLaserOn && !pwmEnabled) {
+		digitalWrite(LASER_ENABLE_PIN, HIGH);
 		isLaserOn = true;
 	}
 	else
@@ -30,8 +40,8 @@ void laserOn()
 
 void laserOff()
 {
-	if (isLaserOn) {
-		digitalWrite(LED_BUILTIN, LOW);
+	if (isLaserOn && !pwmEnabled) {
+		digitalWrite(LASER_ENABLE_PIN, LOW);
 		isLaserOn = false;
 	}
 	else
@@ -40,6 +50,30 @@ void laserOff()
 
 void laserPWM()
 {
-	//too add: using interrupt service routine of clock 
+	if (pwmEnabled)
+	{
+		laserState = !laserState;
+		laserState = HIGH;  //for constant laser line
+		digitalWrite(LASER_ENABLE_PIN, laserState);
+	}
+	else
+		return;
 }
 
+void PWMButtonPress()
+{
+	pwmEnabled = !pwmEnabled;
+}
+
+void laserButtonPress()
+{
+	currTime = millis();
+	if (currTime - prevTime > ISRdelay) {
+		if (isLaserOn) laserOff();
+		else laserOn();
+
+		prevTime = currTime;
+	}
+	else
+		return;
+}
