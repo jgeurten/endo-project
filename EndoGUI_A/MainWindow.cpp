@@ -162,7 +162,7 @@ void MainWindow::createVideoWidget()
 	connect(timer, SIGNAL(timeout()), this, SLOT(update_image()));
 }
 
-/*void MainWindow::camera_button_clicked()
+void MainWindow::camera_button_clicked()
 {
 	if (!playing) {
 		capture = cv::VideoCapture(0);
@@ -188,29 +188,20 @@ void MainWindow::createVideoWidget()
 		timer->stop();
 	}
 }
-*/
 
-void MainWindow::camera_button_clicked()
+
+
+void MainWindow::update_image()
 {
-	//to come
-	int brightness = 2;
-	int contrast = 8;
 
-	cv::Mat laserOnImg, laserOffImg;
-	vector<cv::Vec4i> lines;
-	capture = cv::VideoCapture(0);
-	
-	cv::Point point1, point2;
-	
-	while (1) {
+  	if (capture.isOpened())
+	{
 		
 		cv::namedWindow("Control", CV_WINDOW_NORMAL);
 		cvCreateTrackbar("Brightness", "Control", &brightness, 40);
-		cvCreateTrackbar("Contrast", "Control", &contrast, 40);
-		
+		cvCreateTrackbar("Contrast", "Control", &contrast, 40); 
 		capture.set(CV_CAP_PROP_CONTRAST, (double)contrast);
 		capture.set(CV_CAP_PROP_BRIGHTNESS, (double)brightness);
-
 		toggleLaser(); //ON
 		Sleep(200);
 		capture >> laserOnImg;
@@ -220,7 +211,6 @@ void MainWindow::camera_button_clicked()
 		capture >> laserOffImg;
 
 		lines = Vision::detectLaserLine(laserOnImg, laserOffImg);
-
 		for (int index = 0; index < lines.size(); index++)
 		{
 			point1.x = lines[index][0];
@@ -231,34 +221,20 @@ void MainWindow::camera_button_clicked()
 			cv::line(laserOffImg, point1, point2, cv::Scalar(0, 255, 0), 4);
 		}
 
-		cv::imshow("Detect Laser", laserOffImg);
-		cv::waitKey(10);
-		
-	}
+		cv::Size s = laserOffImg.size();
+		image = QImage((const unsigned char*)(laserOffImg.data), laserOffImg.cols, laserOffImg.rows, laserOffImg.cols*laserOffImg.channels(), QImage::Format_RGB888).rgbSwapped();
 
-}
-
-
-void MainWindow::update_image()
-{
-
-  	if (capture.isOpened())
-	{
-		capture >> frame;
-		cv::Size s = frame.size();
-		image = QImage((const unsigned char*)(frame.data), frame.cols, frame.rows, frame.cols*frame.channels(), QImage::Format_RGB888).rgbSwapped();
-
-		switch (frame.type())	//CONVERT MAT TO QIMAGE
+		switch (laserOffImg.type())	//CONVERT MAT TO QIMAGE
 		{
 		case CV_8UC4:
 		{
-			image = QImage((const unsigned char*)(frame.data), frame.cols, frame.rows, frame.cols*frame.channels(), QImage::Format_ARGB32);
+			image = QImage((const unsigned char*)(laserOffImg.data), laserOffImg.cols, laserOffImg.rows, laserOffImg.cols*laserOffImg.channels(), QImage::Format_ARGB32);
 			break;
 		}
 
 		case CV_8UC3:
 		{
-			image = QImage((const unsigned char*)(frame.data), frame.cols, frame.rows, frame.cols*frame.channels(), QImage::Format_RGB888).rgbSwapped();
+			image = QImage((const unsigned char*)(laserOffImg.data), laserOffImg.cols, laserOffImg.rows, laserOffImg.cols*laserOffImg.channels(), QImage::Format_RGB888).rgbSwapped();
 			break;
 		}
 
@@ -318,7 +294,7 @@ void MainWindow::saveButtonPressed()
 void MainWindow::saveVideo()
 {
 	if (capture.isOpened()) {
-		capture.grab();
+		//capture.grab();
 		capture >> savingMat;
 		gVideoWrite.write(savingMat);
 		qDebug() << "Save Video Thread";
@@ -349,10 +325,10 @@ void MainWindow::toggleLaser()
 	}
 }
 
-QImage MainWindow::mat_to_qimage(cv::Mat frame, QImage::Format format)
+QImage MainWindow::mat_to_qimage(cv::Mat laserOffImg, QImage::Format format)
 {
-	return QImage(frame.data, frame.cols, frame.rows,
-		static_cast<int>(frame.step), format);
+	return QImage(laserOffImg.data, laserOffImg.cols, laserOffImg.rows,
+		static_cast<int>(laserOffImg.step), format);
 }
 
 //get serial com port object

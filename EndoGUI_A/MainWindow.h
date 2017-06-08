@@ -50,8 +50,12 @@ private:
 	bool mcuConnected;
 	bool laserOn;
 
+	vector<cv::Vec4i> lines;
+	cv::Point point1, point2;
+
 	string portname; 
 	Serial *comPort; 
+	cv::Mat laserOnImg, laserOffImg;
 	cv::Mat frame;
 	cv::Mat savingMat;
 	string fileName;
@@ -59,6 +63,8 @@ private:
 	cv::VideoWriter gVideoWrite;
 	int frameWidth;
 	int frameHeight;
+	int brightness = 6;
+	int contrast = 18;
 	
 	void createMenus(); 
 	void createVideoWidget();
