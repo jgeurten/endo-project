@@ -71,6 +71,7 @@ cv::Mat Vision::subtractLaser(cv::Mat &laserOff, cv::Mat &laserOn)
 vector<cv::Vec4i> Vision::detectLaserLine(cv::Mat &laserOff, cv::Mat &laserOn)
 {
 	cv::Mat laserLine = subtractLaser(laserOff, laserOn);
+	detectPeak(laserLine);
 	vector<cv::Vec4i> lines;
 	cv::Mat laserLineBW(laserOff.rows,laserOff.cols, CV_8U, cv::Scalar(0));
 	cv::cvtColor(laserLine, laserLineBW, CV_RGB2GRAY);
@@ -82,6 +83,38 @@ vector<cv::Vec4i> Vision::detectLaserLine(cv::Mat &laserOff, cv::Mat &laserOn)
 		return nullVec;
 	}
 	return lines;
+}
+
+void Vision::detectPeak(cv::Mat img)
+{
+	cv::Mat madeup = img.clone();
+	img.copyTo(madeup);
+	int ncol = img.cols;
+	int nrow = img.rows;
+	vector<cv::Point2i> james;
+
+	for (int row = 0; row < nrow; row++) {
+		int maxValue = 0;
+		for (int col = 0; col < ncol; col++) {
+			if (img.at<uchar>( row,col) > maxValue) {
+			james[row].x = col;
+			james[row].y = row;
+			maxValue = img.at<uchar>(row, col);
+		}
+			
+		}
+		if (maxValue == 0)
+		{
+			james[row].x = 0;
+			james[row].y = row;
+		}
+	}
+	for (int i = 0; i < nrow-1; i++) {
+
+		cv::line(madeup, james[i], james[i + 1], cv::Scalar(0, 255, 0), 2);
+	}
+
+	cv::imshow("connect the dots", madeup);
 }
 
 cv::Point2i Vision::getLaserPosition(vector<cv::Vec4i> lines)
