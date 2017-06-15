@@ -6,11 +6,10 @@ class Vision
 {
 public:
 	Vision();
+	~Vision();
 
-	cv::Mat subtractLaser(cv::Mat &LaserOff, cv::Mat &LaserOn);
-	cv::Mat detectLaserLine(cv::Mat &LaserOff, cv::Mat &LaserOn);
+	static cv::Mat subtractLaser(cv::Mat &LaserOff, cv::Mat &LaserOn);
+	static vector<cv::Vec4i> detectLaserLine(cv::Mat &LaserOff, cv::Mat &LaserOn);
 	
 };
-
-
 #endif

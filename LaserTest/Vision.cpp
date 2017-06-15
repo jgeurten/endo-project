@@ -3,10 +3,17 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <cv.h>
 #include <opencv2/opencv.hpp>
+#include <math.h>
+#include <Vision.h>
 
 using namespace std;
 
 Vision::Vision()
+{
+
+}
+
+Vision::~Vision()
 {
 
 }
@@ -57,3 +64,30 @@ cv::Mat Vision::subtractLaser(cv::Mat &laserOff, cv::Mat &laserOn)
 	return result;
 }
 
+vector<cv::Vec4i> Vision::detectLaserLine(cv::Mat &laserOff, cv::Mat &laserOn)
+{
+	cv::Mat laserLine = subtractLaser(laserOff, laserOn);
+	vector<cv::Vec4i> lines;
+	cv::Mat laserLineBW(480,640, CV_8U, cv::Scalar(0));
+	cv::cvtColor(laserLine, laserLineBW, CV_RGB2GRAY);
+
+	cv::HoughLinesP(laserLine, lines, 1, CV_PI / 2, 20, 50, 10);
+	
+	if (lines.size() == 0) {	//lines not detected
+		vector<cv::Vec4i> nullVec(1, 0);
+		return nullVec;
+	}
+
+	cv::Point point1;
+	cv::Point point2;
+	for (int index = 0; index < lines.size(); index++)
+	{
+		point1.x = lines[index][0];
+		point1.y = lines[index][1];
+		point2.x = lines[index][2];
+		point2.y = lines[index][3];
+
+		cv::line(laserLine, point1, point2, cv::Scalar(0, 255, 0), 2);
+	}
+	return lines;
+}
