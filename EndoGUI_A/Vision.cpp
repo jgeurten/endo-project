@@ -56,7 +56,7 @@ cv::Mat Vision::subtractLaser(cv::Mat &laserOff, cv::Mat &laserOn)
 
 		for (int index = 0; index < count - 2; index++)
 		{
-			if (columns[index + 2] - columns[index] < 5 ){	//if 20 away, new line or noise
+			if (columns[index + 2] - columns[index] < 5 ){	//if > 5 away, new line or noise
 				int middleCol = round((columns[index + 1] + columns[index]) / 2);
 				lineImg.at<uchar>(rowN, middleCol) = 255;
 			}
@@ -175,3 +175,4 @@ void Vision::addPointToPointCloud(vector<cv::Point2i> &point)
 	//ddsg
 }
 */
+
