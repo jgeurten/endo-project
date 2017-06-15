@@ -8,7 +8,7 @@
 #define BAUD_RATE           115200
 
 #define ISR_PIN             2
-#define LASER_ENABLE_PIN    9
+#define LASER_ENABLE_PIN    3
 #define LASER_PWM_PIN       10 
 #define BUTTON_PIN          12
 
