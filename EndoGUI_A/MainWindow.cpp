@@ -2,6 +2,8 @@
 #include "MainWindow.h"
 #include "Serial.h"
 #include "Vision.h"
+#include "ControlWidget.h"
+#include "qlightwidget.h"
 #include "C:\Users\jgeurten\Documents\endo-project\endo-project\EndoScannerArduinoFirmware\Laser.h"
 #include "C:\Users\jgeurten\Documents\endo-project\endo-project\EndoScannerArduinoFirmware\configuration.h"
 #include "C:\Users\jgeurten\Documents\endo-project\endo-project\EndoScannerArduinoFirmware\GCodeInterpreter.h"
@@ -33,6 +35,9 @@
 #include <qcolor.h>
 #include <qdir.h>
 #include <qlineedit.h>
+#include <qframe.h>
+#include <qdockwidget.h>
+#include <qsize.h>
 
 //MSDN includes
 #include <Windows.h>
@@ -44,7 +49,7 @@ using namespace std;
 //using namespace cv;
 //constructor
 
-//class Vision;
+class ControlWidget;
 
 MainWindow::MainWindow(QWidget *parent)
 	:QMainWindow(parent)
@@ -55,13 +60,16 @@ MainWindow::MainWindow(QWidget *parent)
 	isSaving = false;
 	mcuConnected = false;
 	laserOn = false;
+	trackerInit = false;
 	//cv::VideoCapture capture = new cv::VideoCapture();
 
 	createMenus();
-	createVideoWidget();	//create control dock in videowidget
+	createControlDock();	//create control dock in videowidget
 	createStatusBar();
+	createVTKObject();
 	resize(QDesktopWidget().availableGeometry(this).size()*0.6);
 	setWindowTitle(tr("Endo Scanner"));
+	size = this->size; 
 }
 
 //destructor
@@ -117,49 +125,62 @@ void MainWindow::createStatusBar()
 	statusBar()->showMessage(tr("Ready"));
 }
 
-void MainWindow::createVideoWidget()
+void MainWindow::createControlDock()
 {
-	//central widget
-	QWidget *videoWidget = new QWidget(this);
-	setCentralWidget(videoWidget);
+	
+	controlDock = new QDockWidget(tr("Control Dock"), this);
+	controlDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
+	controlDock->setFeatures(QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetFloatable);
+	addDockWidget(Qt::LeftDockWidgetArea, controlDock);
+	controlDock->setMinimumWidth(180);
+	controlDock->setMaximumWidth(300);// (round(size->width()*0.33));
 
-	//QImage *vImg = new QImage(700,500, QImage::Format_RGB888);	//RGB 888 image
-	//vImg->setGeometry(QRect(300, 100, 700, 500));
-	//vImg->fill(Qt::red);
+	QFrame* mainFrame = new QFrame;
+	mainFrame->setFrameStyle(QFrame::WinPanel | QFrame::Sunken);
+	mainFrame->setLineWidth(2);
 
-	//videoLabel = new QLabel(videoWidget);
-	//videoLabel->setGeometry(QRect(300, 100, 700, 500));
-	//videoLabel->setStyleSheet("background-color:black;");
+	QGridLayout* controlsLayout = new QGridLayout;
+	controlsLayout->setMargin(0);
+	controlsLayout->setSpacing(10);
+	controlsLayout->setAlignment(Qt::AlignTop);
+	mainFrame->setLayout(controlsLayout);
 
+	controlDock->setWidget(mainFrame);
+	
+	controlsWidget = new ControlWidget(this);
+	controlsLayout->addWidget(controlsWidget);
 
-	pushButton = new QPushButton(videoWidget);
-	pushButton->setText(tr("Start Video"));
-	pushButton->setGeometry(QRect(20, 50, 90, 30));
-
-	connect(pushButton, SIGNAL(clicked()), this, SLOT(camera_button_clicked()));
-	//connect(pushButton, SIGNAL(clicked()), this, SLOT(update_image()));
-
-	pushButton_2 = new QPushButton(videoWidget);
-	pushButton_2->setText(tr("Save Video"));
-	pushButton_2->setGeometry(QRect(20, 110, 90, 30));
-
-	connect(pushButton_2, SIGNAL(clicked()), this, SLOT(saveButtonPressed()));
-
-	pushButton_3 = new QPushButton(videoWidget);
-	pushButton_3->setText(tr("Connect MCU"));
-	pushButton_3->setGeometry(QRect(20, 170, 90, 30));
-	connect(pushButton_3, SIGNAL(clicked()), this, SLOT(connectMCU()));
-
-	pushButton_4 = new QPushButton(videoWidget);
-	pushButton_4->setText(tr("Toggle Laser"));
-	pushButton_4->setGeometry(QRect(20, 230, 90, 30));
-	pushButton_4->setCheckable(true);
-	pushButton_4->setChecked(false);
-	connect(pushButton_4, SIGNAL(clicked()), this, SLOT(toggleLaser()));
+	connect(controlsWidget->streamButton, SIGNAL(clicked()), this, SLOT(camera_button_clicked()));
+	connect(controlsWidget->saveButton, SIGNAL(clicked()), this,   SLOT(saveButtonPressed()));
+	connect(controlsWidget->mcuButton, SIGNAL(clicked()), this,    SLOT(connectMCU()));
+	connect(controlsWidget->laserButton, SIGNAL(clicked()), this,  SLOT(toggleLaser()));
+	connect(controlsWidget->trackerButton, SIGNAL(clicked()), this,SLOT(startTracker()));
 
 	//create timer to refresh the image every x milliseconds depending on the framerate of the camera
 	timer = new QTimer(this);
 	connect(timer, SIGNAL(timeout()), this, SLOT(update_image()));
+}
+
+void MainWindow::startTracker()
+{
+	if (!trackerInit)
+	{
+
+	}
+	else  //already initalized - unitialize...
+	{
+		trackerTimer->stop();
+		controlsWidget->
+
+	}
+}
+
+bool MainWindow::createVTKObject()
+{
+	configFile = "./config/configEndoscope.xml";
+	intrinsicsFile = "./config/calibration.xml";
+
+	
 }
 
 void MainWindow::camera_button_clicked()
@@ -169,6 +190,7 @@ void MainWindow::camera_button_clicked()
 		capture.open(0);
 		if (capture.isOpened()) {
 			capture.set(CV_CAP_PROP_FPS, 30);
+			capture.set(CV_CAP_PROP_AUTOFOCUS, 0);
 			frameWidth = capture.get(CV_CAP_PROP_FRAME_WIDTH);
 			frameHeight = capture.get(CV_CAP_PROP_FRAME_HEIGHT);
 			framePd = 1000 / (int)capture.get(CV_CAP_PROP_FPS);

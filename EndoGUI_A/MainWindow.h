@@ -21,6 +21,8 @@
 //Local includes
 #include "Serial.h"
 #include "Vision.h"
+#include "qlightwidget.h"
+#include "ControlWidget.h"
 
 //opencv includes
 #include <opencv2/core/core.hpp>
@@ -29,6 +31,8 @@
 
 //using namespace cv;
 using namespace std;
+
+class ControlWidget; 
 
 namespace Ui {
 	class MainWindow;
@@ -44,16 +48,14 @@ public:
 
 private:
 	int framePd;	// period of frame rate
-	bool isReadyToSave;
-	bool isSaving;
-	bool playing;
-	bool mcuConnected;
-	bool laserOn;
-
+	bool isReadyToSave, isSaving, playing, mcuConnected, laserOn, trackerInit;
+	
 	vector<cv::Vec4i> lines;
 	cv::Point point1, point2;
 
-	string portname; 
+	string portname;
+	string configFile, intrinsicsFile, resultsDir, calibDir; 
+
 	Serial *comPort; 
 	cv::Mat laserOnImg, laserOffImg;
 	cv::Mat frame;
@@ -67,8 +69,9 @@ private:
 	int contrast = 18;
 	
 	void createMenus(); 
-	void createVideoWidget();
+	void createControlDock();
 	void createStatusBar();
+	void createVTKObject();
 
 	QMenu		*fileMenu;
 	QMenu		*helpMenu;
@@ -87,12 +90,12 @@ private:
 	QMediaPlayer *player;
 	QTimer		*timer;
 	QTimer		*savingTimer;
-	
-	
+	QDockWidget *controlDock; 
+	ControlWidget *controlsWidget;
 	QImage		image;
 	QPixmap		pixLabel;
 	QLabel		*videoLabel;
-	
+	QSize		*size;
 
 	public slots:
 
@@ -106,7 +109,8 @@ private:
 	void load_button_clicked();
 	void saveButtonPressed();
 	void connectMCU();
-	
+	void startTracker();
+
 	void update_image();
 	void saveVideo();
 	void run();
