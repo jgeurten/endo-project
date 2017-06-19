@@ -28,9 +28,9 @@ void loop()
 }
 
 void buttonPress() {
-  laserButtonPress();
+ // laserButtonPress();
 }
 
 ISR(TIMER1_COMPA_vect) {
-  laserPWM();
+ // laserPWM();
 }
