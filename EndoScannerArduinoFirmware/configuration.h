@@ -1,5 +1,5 @@
 #pragma once
-#define VERSION "v.05232017"
+#define VERSION "v.06192017"
 
 #ifndef CONFIGURATION_H
 #define CONFIGURATION_H
