@@ -39,6 +39,7 @@
 #include <qdockwidget.h>
 #include <qsize.h>
 
+
 //MSDN includes
 #include <Windows.h>
 #include <WinBase.h>
@@ -61,6 +62,7 @@ MainWindow::MainWindow(QWidget *parent)
 	mcuConnected = false;
 	laserOn = false;
 	trackerInit = false;
+	scanningStatus = false; 
 	//cv::VideoCapture capture = new cv::VideoCapture();
 
 	createMenus();
@@ -155,6 +157,7 @@ void MainWindow::createControlDock()
 	connect(controlsWidget->mcuButton, SIGNAL(clicked()), this,    SLOT(connectMCU()));
 	connect(controlsWidget->laserButton, SIGNAL(clicked()), this,  SLOT(toggleLaser()));
 	connect(controlsWidget->trackerButton, SIGNAL(clicked()), this,SLOT(startTracker()));
+	connect(controlsWidget->scanButton, SIGNAL(clicked()), this, SLOT(scanButtonPress()));
 
 	//create timer to refresh the image every x milliseconds depending on the framerate of the camera
 	timer = new QTimer(this);
@@ -163,23 +166,24 @@ void MainWindow::createControlDock()
 
 void MainWindow::startTracker()
 {
+	/*
 	if (!trackerInit)
-	{
+	
 
-	}
+	
 	else  //already initalized - unitialize...
-	{
-		trackerTimer->stop();
-		controlsWidget->
-
-	}
+	
+		//trackerTimer->stop();
+		//controlsWidget->
+		*/
+	
 }
 
 bool MainWindow::createVTKObject()
 {
 	configFile = "./config/configEndoscope.xml";
 	intrinsicsFile = "./config/calibration.xml";
-
+	return true; 
 	
 }
 
@@ -195,8 +199,8 @@ void MainWindow::camera_button_clicked()
 			frameHeight = capture.get(CV_CAP_PROP_FRAME_HEIGHT);
 			framePd = 1000 / (int)capture.get(CV_CAP_PROP_FPS);
 			playing = true;
-			pushButton->setText(tr("Stop Video"));
-			timer->start(framePd);	//need to fix framePd and override 34
+			controlsWidget->streamButton->setText(tr("Stop Stream"));
+			timer->start(30);	//need to fix framePd and override 34
 
 		}
 		else
@@ -204,7 +208,7 @@ void MainWindow::camera_button_clicked()
 	}
 
 	else {
-		pushButton->setText(tr("Play Video"));
+		controlsWidget->streamButton->setText(tr("Stream Video"));
 		statusBar()->showMessage(tr("Ready"), 7000);
 		playing = false;
 		timer->stop();
@@ -218,45 +222,27 @@ void MainWindow::update_image()
 
   	if (capture.isOpened())
 	{
-		
 		cv::namedWindow("Control", CV_WINDOW_NORMAL);
 		cvCreateTrackbar("Brightness", "Control", &brightness, 40);
 		cvCreateTrackbar("Contrast", "Control", &contrast, 40); 
 		capture.set(CV_CAP_PROP_CONTRAST, (double)contrast);
 		capture.set(CV_CAP_PROP_BRIGHTNESS, (double)brightness);
-		toggleLaser(); //ON
-		Sleep(200);
-		capture >> laserOnImg;
 		
-		toggleLaser();	//TURN OFF
-		Sleep(200);
-		capture >> laserOffImg;
+		capture >> streamImg; 
+		cv::Size s = streamImg.size();
+		image = QImage((const unsigned char*)(streamImg.data), streamImg.cols, streamImg.rows, streamImg.cols*streamImg.channels(), QImage::Format_RGB888).rgbSwapped();
 
-		lines = Vision::detectLaserLine(laserOnImg, laserOffImg);
-		for (int index = 0; index < lines.size(); index++)
-		{
-			point1.x = lines[index][0];
-			point1.y = lines[index][1];
-			point2.x = lines[index][2];
-			point2.y = lines[index][3];
-
-			cv::line(laserOffImg, point1, point2, cv::Scalar(0, 255, 0), 4);
-		}
-
-		cv::Size s = laserOffImg.size();
-		image = QImage((const unsigned char*)(laserOffImg.data), laserOffImg.cols, laserOffImg.rows, laserOffImg.cols*laserOffImg.channels(), QImage::Format_RGB888).rgbSwapped();
-
-		switch (laserOffImg.type())	//CONVERT MAT TO QIMAGE
+		switch (streamImg.type())	//CONVERT MAT TO QIMAGE
 		{
 		case CV_8UC4:
 		{
-			image = QImage((const unsigned char*)(laserOffImg.data), laserOffImg.cols, laserOffImg.rows, laserOffImg.cols*laserOffImg.channels(), QImage::Format_ARGB32);
+			image = QImage((const unsigned char*)(streamImg.data), streamImg.cols, streamImg.rows, streamImg.cols*streamImg.channels(), QImage::Format_ARGB32);
 			break;
 		}
 
 		case CV_8UC3:
 		{
-			image = QImage((const unsigned char*)(laserOffImg.data), laserOffImg.cols, laserOffImg.rows, laserOffImg.cols*laserOffImg.channels(), QImage::Format_RGB888).rgbSwapped();
+			image = QImage((const unsigned char*)(streamImg.data), streamImg.cols, streamImg.rows, streamImg.cols*streamImg.channels(), QImage::Format_RGB888).rgbSwapped();
 			break;
 		}
 
@@ -267,12 +253,68 @@ void MainWindow::update_image()
 
 		repaint();
 
-		if (isSaving)
-			saveVideo();
 	}
 
 	else
 		statusBar()->showMessage(tr("Unable to Detect Camera"), 5000);
+}
+
+void MainWindow::scanButtonPress()
+{
+	if (!scanningStatus) {
+		scanTimer = new QTimer(this);
+		connect(scanTimer, SIGNAL(timeout()), this, SLOT(scan()));
+		controlsWidget->scanButton->setText(tr("Stop Scan"));
+		scanningStatus = true; 
+		scanTimer->start(30);
+	}
+	else {
+		controlsWidget->scanButton->setText(tr("Start Scan"));
+		scanTimer->stop();
+		scanningStatus = false; 
+	}
+}
+
+void MainWindow::scan()
+{
+	scancount++;
+	if (scancount == 1) {
+		toggleLaser();
+		togglecount++;
+	}
+	else if (scancount == 5) {			//effectively delayed 120ms
+		if (togglecount % 2 == 0)
+			capture >> laserOnImg;
+		else {
+			capture >> laserOffImg;
+			if (isSaving)
+				saveVideo();
+		}
+		scancount = 0;
+	}
+	if (laserOnImg.empty() || laserOffImg.empty())
+		return;
+
+	if (togglecount % 2 == 0)	//have both laser on and off successive images
+	{
+	
+	cv::imshow("ON", laserOnImg);
+	cv::imshow("OFF", laserOffImg);
+	}
+
+	/*
+	lines = Vision::detectLaserLine(laserOnImg, laserOffImg);
+	for (int index = 0; index < lines.size(); index++)
+	{
+		point1.x = lines[index][0];
+		point1.y = lines[index][1];
+		point2.x = lines[index][2];
+		point2.y = lines[index][3];
+
+		cv::line(laserOffImg, point1, point2, cv::Scalar(0, 255, 0), 4);
+	}
+	*/
+
 }
 
 void MainWindow::saveButtonPressed()
@@ -296,7 +338,7 @@ void MainWindow::saveButtonPressed()
 
 			if (gVideoWrite.isOpened())
 			{
-				pushButton_2->setText("End Saving Video");
+				controlsWidget->saveButton->setText("End Saving Video");
 				isReadyToSave = false;
 				isSaving = true;
 			}
@@ -306,7 +348,7 @@ void MainWindow::saveButtonPressed()
 	}
 	else
 	{
-		pushButton_2->setText("Save Video");
+		controlsWidget->saveButton->setText("Save Video");
 		gVideoWrite.release();		//release to close open file and finish saving process
 		isReadyToSave = true;
 		isSaving = false;
@@ -337,10 +379,12 @@ void MainWindow::toggleLaser()
 	if (mcuConnected && !laserOn) {
 		comPort->write("G21");
 		laserOn = true;
+		controlsWidget->laserButton->setText(tr("Laser Off"));
 	}
 	else if (mcuConnected && laserOn){
 		comPort->write("G32");
 		laserOn = false;
+		controlsWidget->laserButton->setText(tr("Laser On"));
 }
 	else {
 		statusBar()->showMessage(tr("Connect MCU First"), 2000);
@@ -365,7 +409,7 @@ void MainWindow::connectMCU() {
 			comPort = new Serial(portname);	//call Serial constructor in Serial.cpp
 
 		if (comPort->isConnected()) {
-			pushButton_3->setText(tr("Disconnect MCU"));
+			controlsWidget->mcuButton->setText(tr("Disconnect MCU"));
 			statusBar()->showMessage(tr("MCU Connected"), 2000);
 			mcuConnected = true;
 		}
@@ -376,7 +420,7 @@ void MainWindow::connectMCU() {
 		delete comPort;
 		mcuConnected = false;
 		statusBar()->showMessage(tr("MCU Disconnected."), 2000);
-		pushButton_3->setText(tr("Connect MCU"));
+		controlsWidget->mcuButton->setText(tr("Connect MCU"));
 	}
 }
 

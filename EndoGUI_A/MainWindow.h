@@ -17,6 +17,7 @@
 #include <qfile>
 #include <qstring.h>
 #include <qmediaplayer.h>
+#include <qthread.h>
 
 //Local includes
 #include "Serial.h"
@@ -48,7 +49,7 @@ public:
 
 private:
 	int framePd;	// period of frame rate
-	bool isReadyToSave, isSaving, playing, mcuConnected, laserOn, trackerInit;
+	bool isReadyToSave, isSaving, playing, mcuConnected, laserOn, trackerInit, scanningStatus;
 	
 	vector<cv::Vec4i> lines;
 	cv::Point point1, point2;
@@ -57,21 +58,23 @@ private:
 	string configFile, intrinsicsFile, resultsDir, calibDir; 
 
 	Serial *comPort; 
-	cv::Mat laserOnImg, laserOffImg;
+	cv::Mat streamImg, laserOnImg, laserOffImg;
 	cv::Mat frame;
 	cv::Mat savingMat;
 	string fileName;
 	cv::VideoCapture capture;
 	cv::VideoWriter gVideoWrite;
-	int frameWidth;
-	int frameHeight;
+	int frameWidth, frameHeight;
+	
+	int scancount = 0; 
+	int togglecount = 0; 
 	int brightness = 6;
 	int contrast = 18;
 	
 	void createMenus(); 
 	void createControlDock();
 	void createStatusBar();
-	void createVTKObject();
+	bool createVTKObject();
 
 	QMenu		*fileMenu;
 	QMenu		*helpMenu;
@@ -89,13 +92,14 @@ private:
 
 	QMediaPlayer *player;
 	QTimer		*timer;
-	QTimer		*savingTimer;
+	QTimer		*scanTimer; 
 	QDockWidget *controlDock; 
 	ControlWidget *controlsWidget;
 	QImage		image;
 	QPixmap		pixLabel;
 	QLabel		*videoLabel;
 	QSize		*size;
+	QThread		*streamThread; 
 
 	public slots:
 
@@ -110,6 +114,8 @@ private:
 	void saveButtonPressed();
 	void connectMCU();
 	void startTracker();
+	void scanButtonPress();
+	void scan();
 
 	void update_image();
 	void saveVideo();
