@@ -31,6 +31,7 @@ public:
 	QPushButton								*mcuButton;
 	QPushButton								*laserButton;
 	QPushButton								*trackerButton;
+	QPushButton								*scanButton; 
 
 };
 #endif // !CONTROLWIDGET_H

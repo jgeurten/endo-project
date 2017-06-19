@@ -1,5 +1,6 @@
 #include "ControlWidget.h"
 #include "qlightwidget.h"
+#include "MainWindow.h"
 
 //QT
 #include <Qlabel>
@@ -34,9 +35,14 @@ ControlWidget::ControlWidget(QWidget *parent)
 	vbox->addWidget(saveButton);
 
 	laserButton = new QPushButton;
-	laserButton->setCheckable(true);
+	laserButton->setCheckable(false);
 	laserButton->setText("Laser On");
 	vbox->addWidget(laserButton);
+
+	scanButton = new QPushButton; 
+	scanButton->setCheckable(false);
+	scanButton->setText("Start Scanning");
+	vbox->addWidget(scanButton);
 
 	QHBoxLayout *hbox = new QHBoxLayout;
 	QLabel *label = new QLabel;
