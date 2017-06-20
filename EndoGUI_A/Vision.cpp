@@ -68,6 +68,47 @@ cv::Mat Vision::subtractLaser(cv::Mat &laserOff, cv::Mat &laserOn)
 	return result;
 }
 
+cv::Mat Vision::backupDetectLaser(cv::Mat &laserOff, cv::MAt &laserOn)
+{
+    cv::createWindow("Control", control);
+    cv::createTrackBar("Low Hue", control, &lowH, 0, 180);
+    cv::createTrackBar("High Hue", control, &highH, 0, 180);
+    cv::createTrackBar("Low Saturation", control, &lowS, 0, 180);
+    cv::createTrackBar("High Saturation", control, &highS, 0, 180);
+    cv::createTrackBar("Low Value", control, &lowV 0, 180);
+    cv::createTrackBar("High Value", control, &highV, 0, 180);
+    
+    cv::Mat laserOffHsv, laserOnHsv, diffHsv, thresholdImg,filteredImg, lineImg;
+    
+    cv::cvtColor(laserOff, laserOffHsv, CV_RGB2HSV);
+    cv::cvtColor(laserOff, laserOffHsv, CV_RGB2HSV);
+    
+    cv::subtract(laserOnHsv, laserOffHsv, diffHsv);
+    cv::threshold(diffHsv, thresholdImg, cv:Scalar(lowH, lowS, lowV), cv::Scalar(highH, highS, high), CV_THRESH_TOZERO);
+    cv::median(threshold, filteredImg, cv:Size(5, 5), );
+    
+    for (int rowN = 0; rowN < laserOff.rows; rowN++)
+    {
+        int count = 0;
+        int columns[640];
+        for (int colN = 0; colN < laserOff.cols; colN++)
+        {
+            if (filteredImg.at<uchar>(rowN, colN) > 5) //using diff img. Clear and thin line
+            {
+                columns[count]= colN;
+                count++;
+            }
+        }
+        for (int index = 0; index < count - 2; index++)
+        {
+            if (columns[index + 2] - columns[index] < 5 ){	//if > 5 away, new line or noise
+                int middleCol = round((columns[index + 1] + columns[index]) / 2);
+                lineImg.at<uchar>(rowN, middleCol) = 255;
+            }
+        }
+    }
+}
+
 vector<cv::Vec4i> Vision::detectLaserLine(cv::Mat &laserOff, cv::Mat &laserOn)
 {
 	cv::Mat laserLine = subtractLaser(laserOff, laserOn);
@@ -122,47 +163,36 @@ cv::Point2i Vision::getLaserPosition(vector<cv::Vec4i> lines)
 	cv::Point2i middleOfLaser;
 	int i;
 	for (i = 0; i < lines.size(); i++)
-	{
 		middleOfLaser.x += lines[i][0] + lines[i][2];
-		middleOfLaser.y += lines[i][1] + lines[i][3];
-	}
-
+	
 	middleOfLaser.x /= 2*i;
-	middleOfLaser.y /= 2*i;
 	return middleOfLaser;
 }
 
-/*void Vision::cvPointsToCloud(cv::Mat &laserOff, cv::Mat &laserOn)
+void Vision::cvPointsToCloud(cv::Mat &laserImg)
 {
 	//Detect non-incident laser line. Reflection line
-
-	cv::Mat laserLine, bwLaserLine; 
 	cv::Point2i midLaser;
-	vector<cv::Vec4i> lines;
-	vector<cv::Point2i> reflectLaser;
-
-	laserLine = subtractLaser(laserOn, laserOff);
-	cv::cvtColor(laserLine, bwLaserLine, CV_RGB2GRAY);
-	lines = detectLaserLine(laserOn, laserOff);
-	midLaser = getLaserPosition(lines);
+    midLaser = getLaserPosition(lines);
+    vector<cv::Point2i> reflectLaser;
 	
-	int colBounds[2] = { midLaser.x - 40, midLaser.y + 40 };
+	int colBounds[2] = { midLaser.x - 200, midLaser.x + 200 };
 	int rowBounds[2] = { 0, 480 };
-	int found = 0;
+	int nFound = 0;
 
 	for (int rowIndex = rowBounds[0]; rowIndex < rowBounds[1]; rowIndex++)
 	{
-		for (int LColIndex = 0, int RColIndex = laserOn.rows; LColIndex < colBounds[0] && RColIndex > colBounds[1];	LColIndex++, RColIndex--)
+		for (int LColIndex = 0, int RColIndex = laserImg.rows; LColIndex < colBounds[0] && RColIndex > colBounds[1];	LColIndex++, RColIndex--)
 		{
-			if (bwLaserLine.at<uchar>(LColIndex, rowIndex) > 0) {
-				reflectLaser[found].x = LColIndex;
-				reflectLaser[found].y = rowIndex;
-				found++;
+			if (laserImg.at<uchar>(LColIndex, rowIndex) == 255) {
+				reflectLaser[nFound].x = LColIndex;                 //may have to append instead
+				reflectLaser[nFound].y = rowIndex;
+				nFound++;
 			}
-			if (bwLaserLine.at<uchar>(RColIndex, rowIndex) > 0) {
-				reflectLaser[found].x = RColIndex;
-				reflectLaser[found].y = rowIndex;
-				found++;
+			if (laserImg.at<uchar>(RColIndex, rowIndex) == 255) {
+				reflectLaser[nFound].x = RColIndex;
+				reflectLaser[nFound].y = rowIndex;
+				nFound++;
 			}
 				
 		}
@@ -172,7 +202,9 @@ cv::Point2i Vision::getLaserPosition(vector<cv::Vec4i> lines)
 
 void Vision::addPointToPointCloud(vector<cv::Point2i> &point)
 {
-	//ddsg
+    for(int index = 0 ; i < point.size; i++)
+ {
+ 
 }
-*/
+
 

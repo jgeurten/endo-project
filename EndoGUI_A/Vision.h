@@ -24,6 +24,14 @@ public:
 	static cv::Point2i getLaserPosition(vector<cv::Vec4i> lines);
 	static void addPointToPointCloud(vector<cv::Point2i> &point);
 	static void detectPeak(cv::Mat);
+    
+    //Global variables:
+    int lowH = 70;
+    int highH = 120;
+    int lowV = 50;
+    int highV = 170;
+    int lowS = 40;
+    int highS = 180;
 		
 };
 #endif
