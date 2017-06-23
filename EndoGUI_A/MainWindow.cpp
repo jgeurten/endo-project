@@ -38,7 +38,8 @@
 #include <qframe.h>
 #include <qdockwidget.h>
 #include <qsize.h>
-
+#include <QFuture>
+#include <QtConcurrent\qtconcurrentrun.h>
 
 //MSDN includes
 #include <Windows.h>
@@ -107,6 +108,23 @@ void MainWindow::createMenus()
 	fileMenu->addSeparator();
 	fileMenu->addAction(exitAct);
 
+	//Camera menu actions:
+	webcam = new QAction(tr("Webcam"), this); 
+	webcam->setCheckable(true); 
+	webcam->setChecked(true); 
+	connect(webcam, SIGNAL(toggled(bool)), this, SLOT(camWebcam(bool)));
+	
+	endoCam = new QAction(tr("Endocam"), this);
+	endoCam->setCheckable(true);
+	endoCam->setChecked(false);
+	connect(endoCam, SIGNAL(toggled(bool)), this, SLOT(camEndocam(bool)));
+
+	//Camera menu:
+	 
+	cameraMenu = menuBar()->addMenu(tr("&Camera"));
+	cameraMenu->addAction(webcam);
+	cameraMenu->addAction(endoCam);
+	
 	//Help menu actions:
 	aboutAct = new QAction(tr("&About"), this);
 	aboutAct->setStatusTip(tr("About application"));
@@ -165,26 +183,111 @@ void MainWindow::createControlDock()
 }
 
 void MainWindow::startTracker()
-{
-	/*
+{/*
 	if (!trackerInit)
-	
+	{
+		if (dataCollector->GetDevice(trackerDevice, "TrackerDevice") != PLUS_SUCCESS) {
+			statusBar()->showMessage(tr("Unable to find Tracker device"), 5000);
+			return;
+		}
+		if (webcam->isChecked())
+		{
+			// Get Ovrvision Pro device
+			if (dataCollector->GetDevice(webcamDevice, "VideoDevice") != PLUS_SUCCESS)
+			{
+				qDebug() << "Unable to locate the device with ID = \"VideoDevice\". Check config file.";
+				exit;
+			}
 
-	
+			// Get virtual mixer
+			if (dataCollector->GetDevice(mixerDevice, "TrackedVideoDevice") != PLUS_SUCCESS)
+			{
+				qDebug() <<"Unable to locate the device with ID = \"TrackedVideoDevice\". Check config file.";
+				exit;
+			}
+			webcamVideo = dynamic_cast<vtkPlusMmfVideoSource *>(webcamDevice);
+			mixer = dynamic_cast<vtkPlusVirtualMixer *>(mixerDevice);
+		}
+
+		if (endoCam->isChecked())
+		{
+			// Get Ovrvision Pro device
+			if (dataCollector->GetDevice(endoDevice, "VideoDevice") != PLUS_SUCCESS)
+			{
+				qDebug() << "Unable to locate the device with ID = \"VideoDevice\". Check config file.";
+				exit;
+			}
+
+			// Get virtual mixer
+			if (dataCollector->GetDevice(mixerDevice, "TrackedVideoDevice") != PLUS_SUCCESS)
+			{
+				qDebug() << "Unable to locate the device with ID = \"TrackedVideoDevice\". Check config file.";
+				exit;
+			}
+			endoVideo = dynamic_cast<vtkPlusMmfVideoSource *>(endoDevice);
+			mixer = dynamic_cast<vtkPlusVirtualMixer *>(mixerDevice);
+		}
+	}
+
+
 	else  //already initalized - unitialize...
-	
+	{
 		//trackerTimer->stop();
-		//controlsWidget->
-		*/
-	
+		controlsWidget->trackerButton->setText(tr("Stop Tracking"));
+		statusBar()->showMessage(tr("Stopping Tracking"));
+	}
+	*/
 }
 
-bool MainWindow::createVTKObject()
+void MainWindow::createVTKObject()
 {
-	configFile = "./config/configEndoscope.xml";
 	intrinsicsFile = "./config/calibration.xml";
-	return true; 
+
+	if (webcam->isChecked())
+		configFile = "./config/configWebcam.xml";
+
+	if (endoCam->isChecked())
+		configFile = "./config/configEndoscope.xml";
+
+	// Create output directory
+	resultsDir = "./Results/";
+	if (CreateDirectory(resultsDir.c_str(), NULL) ||
+		ERROR_ALREADY_EXISTS != GetLastError())
+		std::cout << "Output directory created." << std::endl;
+
+	// Create calibration saves directory
+	calibDir = "./Calibration";
+	if (CreateDirectory(calibDir.c_str(), NULL) ||
+		ERROR_ALREADY_EXISTS != GetLastError())
+		std::cout << "calibration directory created." << std::endl;
+
+
+
+	/*
+
+
+	trackerDevice = NULL;
+
 	
+
+	// Read configuration file
+	if (PlusXmlUtils::ReadDeviceSetConfigurationFromFile(configRootElement, configFile.c_str()) == PLUS_FAIL)
+	{
+		cout << "Unable to read configuration from file" << configFile.c_str() <<endl;
+		exit;
+	}
+
+	vtkPlusConfig::GetInstance()->SetDeviceSetConfigurationData(configRootElement);
+
+	// Read configuration file
+	if (dataCollector->ReadConfiguration(configRootElement) != PLUS_SUCCESS)
+	{
+		cout << "Configuration incorrect for vtkPlusDataCollector." <<endl;
+		exit;
+	}	
+
+	*/
+
 }
 
 void MainWindow::camera_button_clicked()
@@ -250,11 +353,8 @@ void MainWindow::update_image()
 			qWarning() << "Type Not Handled";
 			break;
 		}
-
 		repaint();
-
 	}
-
 	else
 		statusBar()->showMessage(tr("Unable to Detect Camera"), 5000);
 }
@@ -267,6 +367,8 @@ void MainWindow::scanButtonPress()
 		controlsWidget->scanButton->setText(tr("Stop Scan"));
 		scanningStatus = true; 
 		scanTimer->start(30);
+		scanningStatus = true; 
+		
 	}
 	else {
 		controlsWidget->scanButton->setText(tr("Start Scan"));
@@ -317,6 +419,11 @@ void MainWindow::scan()
 
 }
 
+void MainWindow::getPosition()
+{
+	//return position of laser pointer and camera being tracked
+
+}
 void MainWindow::saveButtonPressed()
 {
 	if (isReadyToSave && capture.isOpened()) {
@@ -424,6 +531,110 @@ void MainWindow::connectMCU() {
 	}
 }
 
+void MainWindow::camWebcam(bool checked)
+{
+	if (checked)
+	{
+		endoCam->setChecked(false);
+	}
+
+	else
+	{
+		
+		webcam->setCheckable(true);
+		endoCam->setCheckable(true);
+	}
+	/*
+
+
+	if (checked)
+	{
+		dataCollector->Stop();
+		dataCollector->Disconnect();
+		dataCollector = NULL;
+
+		dataCollector = vtkSmartPointer<vtkPlusDataCollector>::New();
+
+		endoCam->setChecked(false);
+
+		createVTKObject(); 
+		mixer->GetChannel()->GetTrackedFrame(mixerFrame);
+
+		bool isMatrixValid(false);
+		repository->SetTransforms(mixerFrame);
+		if (repository->GetTransform(PlusTransformName("Webcam", "Tracker"), tCam2Tracker, &isMatrixValid) == PLUS_SUCCESS && isMatrixValid)
+		{
+			statusBar()->showMessage(tr("Webcam now being used & tracked"), 5000);
+		}
+	}
+
+	else
+	{
+		dataCollector->Stop();
+		dataCollector->Disconnect();
+		dataCollector = NULL;
+
+		dataCollector = vtkSmartPointer<vtkPlusDataCollector>::New();
+
+		createVTKObject();
+		webcam->setCheckable(true);
+		endoCam->setCheckable(true);
+	}
+
+	*/
+}
+
+void MainWindow::camEndocam(bool checked)
+{
+	if (checked)
+	{
+		webcam->setChecked(false);
+	}
+
+	else
+	{
+
+		webcam->setCheckable(true);
+		endoCam->setCheckable(true);
+	}
+	/*
+	if (checked)
+	{
+		dataCollector->Stop();
+		dataCollector->Disconnect();
+		dataCollector = NULL;
+
+		dataCollector = vtkSmartPointer<vtkPlusDataCollector>::New();
+
+		// Ensure that all other cameras are unselected
+		webcam->setChecked(false);
+
+		createVTKObject();
+
+		mixer->GetChannel()->GetTrackedFrame(mixerFrame);
+
+		bool isMatrixValid(false);
+		repository->SetTransforms(mixerFrame);
+		if (repository->GetTransform(PlusTransformName("Endo", "Tracker"), tCam2Tracker, &isMatrixValid) == PLUS_SUCCESS && isMatrixValid)
+		{
+			statusBar()->showMessage(tr("Endoscope now being used & tracked"), 5000);
+		}
+	}
+	else
+	{
+		dataCollector->Stop();
+		dataCollector->Disconnect();
+		dataCollector = NULL;
+
+		dataCollector = vtkSmartPointer<vtkPlusDataCollector>::New();
+
+		createVTKObject();
+		endoCam->setChecked(false);
+	}
+
+	*/
+	
+}
 void MainWindow::load_button_clicked()
 {
 	//

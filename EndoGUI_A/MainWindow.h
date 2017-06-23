@@ -74,15 +74,18 @@ private:
 	void createMenus(); 
 	void createControlDock();
 	void createStatusBar();
-	bool createVTKObject();
+	void createVTKObject();
 
 	QMenu		*fileMenu;
 	QMenu		*helpMenu;
+	QMenu		*cameraMenu; 
 	QAction		*openAct;
 	QAction		*saveAct;
 	QAction		*exitAct;
 	QAction		*aboutAct;
 	QAction		*helpAct;
+	QAction		*webcam; 
+	QAction		*endoCam; 
 
 	QWidget		*videoWidget;
 	QPushButton *pushButton;
@@ -101,6 +104,48 @@ private:
 	QSize		*size;
 	QThread		*streamThread; 
 
+	/*
+
+	// Plus members
+	vtkSmartPointer<vtkXMLDataElement>				configRootElement = vtkSmartPointer<vtkXMLDataElement>::New();
+	vtkSmartPointer<vtkPlusDataCollector>			dataCollector = vtkSmartPointer<vtkPlusDataCollector>::New();
+	vtkSmartPointer<vtkPlusTransformRepository>		repository = vtkSmartPointer<vtkPlusTransformRepository>::New();
+
+	vtkPlusDevice									*trackerDevice;
+
+	// Video Devices
+	vtkPlusDevice									*webcamDevice;
+	vtkPlusDevice									*endoDevice;
+
+	// Mixers
+	vtkPlusDevice									*mixerDevice;
+	vtkPlusDevice									*leftMixerDevice;
+	vtkPlusDevice									*rightMixerDevice;
+
+	// Channels
+	vtkPlusChannel									*trackerChannel;
+	vtkPlusChannel									*videoChannel;
+	vtkPlusChannel									*leftVideoChannel;
+	vtkPlusChannel									*rightVideoChannel;
+	vtkPlusChannel									*leftMixerChannel;
+	vtkPlusChannel									*rightMixerChannel;
+	vtkPlusChannel									*mixerChannel;
+
+	PlusTrackedFrame								leftVideoFrame;
+	PlusTrackedFrame								rightVideoFrame;
+	PlusTrackedFrame								videoFrame;
+	PlusTrackedFrame								leftMixerFrame;
+	PlusTrackedFrame								rightMixerFrame;
+	PlusTrackedFrame								mixerFrame;
+
+	vtkPlusNDITracker								*ndiTracker;
+	vtkPlusOvrvisionProVideoSource					*ovrVideo;
+	vtkPlusMmfVideoSource							*webcamVideo;
+	vtkPlusMmfVideoSource							*endoVideo;
+	vtkPlusOpenIGTLinkVideoSource					*ultrasoundVideo;
+
+	*/
+
 	public slots:
 
 	void toggleLaser();
@@ -116,6 +161,8 @@ private:
 	void startTracker();
 	void scanButtonPress();
 	void scan();
+	void camWebcam(bool);
+	void camEndocam(bool);
 
 	void update_image();
 	void saveVideo();
