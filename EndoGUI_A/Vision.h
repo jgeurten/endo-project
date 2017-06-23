@@ -22,8 +22,7 @@ public:
 	static void cvPointsToCloud(cv::Mat &laserOff, cv::Mat &laserOn);
 
 	static cv::Point2i getLaserPosition(vector<cv::Vec4i> lines);
-	static void addPointToPointCloud(vector<cv::Point2i> &point);
-	static void detectPeak(cv::Mat);
+	static void framePointsToCloud(cv::Mat &laserOff, cv::Mat &laserOn, int res); 
 		
 };
 #endif

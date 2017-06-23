@@ -9,6 +9,9 @@
 #include <Vision.h>
 #include <Serial.h>
 #include <MainWindow.h>
+#include <EndoModel.h>
+#include <defines.h>
+#include <LinAlg.h>
 
 using namespace std;
 
@@ -46,7 +49,6 @@ cv::Mat Vision::subtractLaser(cv::Mat &laserOff, cv::Mat &laserOn)
 		int columns[640];
 		for (int colN = 0; colN < laserOff.cols; colN++)
 		{
-			
 			if (threshImg.at<uchar>(rowN, colN) > 5)				//using diff img. Clear and thin line
 			{
 				columns[count]= colN;
@@ -63,15 +65,13 @@ cv::Mat Vision::subtractLaser(cv::Mat &laserOff, cv::Mat &laserOn)
 		}
 	}
 	
-	cv::imshow("line img",lineImg);
-	cv::cvtColor(lineImg, result, CV_GRAY2RGB);
 	return result;
 }
 
 vector<cv::Vec4i> Vision::detectLaserLine(cv::Mat &laserOff, cv::Mat &laserOn)
 {
 	cv::Mat laserLine = subtractLaser(laserOff, laserOn);
-	detectPeak(laserLine);
+	
 	vector<cv::Vec4i> lines;
 	cv::Mat laserLineBW(laserOff.rows,laserOff.cols, CV_8U, cv::Scalar(0));
 	cv::cvtColor(laserLine, laserLineBW, CV_RGB2GRAY);
@@ -85,36 +85,41 @@ vector<cv::Vec4i> Vision::detectLaserLine(cv::Mat &laserOff, cv::Mat &laserOn)
 	return lines;
 }
 
-void Vision::detectPeak(cv::Mat img)
+
+void Vision::framePointsToCloud(cv::Mat &laserOff, cv::Mat &laserOn,  int res)
 {
-	cv::Mat madeup = img.clone();
-	img.copyTo(madeup);
-	int ncol = img.cols;
-	int nrow = img.rows;
-	vector<cv::Point2i> james;
+	EndoModel* model = new EndoModel(); 
+	cv::Mat laserLineImg = subtractLaser(laserOff, laserOn);
 
-	for (int row = 0; row < nrow; row++) {
-		int maxValue = 0;
-		for (int col = 0; col < ncol; col++) {
-			if (img.at<uchar>( row,col) > maxValue) {
-			james[row].x = col;
-			james[row].y = row;
-			maxValue = img.at<uchar>(row, col);
-		}
-			
-		}
-		if (maxValue == 0)
-		{
-			james[row].x = 0;
-			james[row].y = row;
+	EndoPt camera, laserPt1, laserPt2; 
+	//get position of laser pointer() - need positions of fiducials positioned axial to the laser pointer
+	//get position of camera()
+
+	for (int row = HORIZONTAL_OFFSET; row <  laserLineImg.rows - HORIZONTAL_OFFSET; row += res) {
+		for (int col = VERTICAL_OFFSET; col <  laserLineImg.cols - VERTICAL_OFFSET; col++) {
+			if (laserLineImg.at<uchar>(row, col) == 255) {
+
+				EndoPt detectedPt; 
+				detectedPt.x = col; 
+				detectedPt.y = row; 
+
+				EndoLine camLine = lineFromPoints(camera, detectedPt); 
+				EndoLine laserLine = lineFromPoints(laserPt1, laserPt2);
+				EndoPt intersection = intersectionOfLines(camLine, laserLine);
+
+				if (intersection.x == NULL) {
+					qDebug("No intersection found");
+					break;
+				}
+				else {
+					//point manipulation
+					EndoPt newPoint; 
+					model->addPointToPointCloud(newPoint);
+				}
+			}
 		}
 	}
-	for (int i = 0; i < nrow-1; i++) {
 
-		cv::line(madeup, james[i], james[i + 1], cv::Scalar(0, 255, 0), 2);
-	}
-
-	cv::imshow("connect the dots", madeup);
 }
 
 cv::Point2i Vision::getLaserPosition(vector<cv::Vec4i> lines)
@@ -132,7 +137,7 @@ cv::Point2i Vision::getLaserPosition(vector<cv::Vec4i> lines)
 	return middleOfLaser;
 }
 
-/*void Vision::cvPointsToCloud(cv::Mat &laserOff, cv::Mat &laserOn)
+void Vision::cvPointsToCloud(cv::Mat &laserOff, cv::Mat &laserOn)
 {
 	//Detect non-incident laser line. Reflection line
 
@@ -170,9 +175,5 @@ cv::Point2i Vision::getLaserPosition(vector<cv::Vec4i> lines)
 	addPointToPointCloud(reflectLaser);
 }
 
-void Vision::addPointToPointCloud(vector<cv::Point2i> &point)
-{
-	//ddsg
-}
-*/
+
 
