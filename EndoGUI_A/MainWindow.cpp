@@ -4,6 +4,8 @@
 #include "Vision.h"
 #include "ControlWidget.h"
 #include "qlightwidget.h"
+#include "defines.h"
+#include <EndoModel.h>
 #include "C:\Users\jgeurten\Documents\endo-project\endo-project\EndoScannerArduinoFirmware\Laser.h"
 #include "C:\Users\jgeurten\Documents\endo-project\endo-project\EndoScannerArduinoFirmware\configuration.h"
 #include "C:\Users\jgeurten\Documents\endo-project\endo-project\EndoScannerArduinoFirmware\GCodeInterpreter.h"
@@ -368,11 +370,13 @@ void MainWindow::scanButtonPress()
 		scanningStatus = true; 
 		scanTimer->start(30);
 		scanningStatus = true; 
-		
+		Vision* visionIns = new Vision(); 
+				
 	}
 	else {
 		controlsWidget->scanButton->setText(tr("Start Scan"));
 		scanTimer->stop();
+		EndoModel::savePointCloud();
 		scanningStatus = false; 
 	}
 }
@@ -394,28 +398,16 @@ void MainWindow::scan()
 		}
 		scancount = 0;
 	}
-	if (laserOnImg.empty() || laserOffImg.empty())
+	if (laserOnImg.empty() || laserOffImg.empty())	//only true for toggle count = 1
 		return;
 
 	if (togglecount % 2 == 0)	//have both laser on and off successive images
 	{
+		visionIns->framePointsToCloud(laserOffImg, laserOnImg, 1);
 	
-	cv::imshow("ON", laserOnImg);
-	cv::imshow("OFF", laserOffImg);
 	}
 
-	/*
-	lines = Vision::detectLaserLine(laserOnImg, laserOffImg);
-	for (int index = 0; index < lines.size(); index++)
-	{
-		point1.x = lines[index][0];
-		point1.y = lines[index][1];
-		point2.x = lines[index][2];
-		point2.y = lines[index][3];
-
-		cv::line(laserOffImg, point1, point2, cv::Scalar(0, 255, 0), 4);
-	}
-	*/
+	
 
 }
 

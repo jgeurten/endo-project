@@ -25,6 +25,7 @@
 #include "qlightwidget.h"
 #include "ControlWidget.h"
 
+
 //opencv includes
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -104,6 +105,8 @@ private:
 	QSize		*size;
 	QThread		*streamThread; 
 
+
+	Vision		*visionIns; 
 	/*
 
 	// Plus members
