@@ -21,7 +21,7 @@ ControlWidget::ControlWidget(QWidget *parent)
 
 	trackerButton = new QPushButton;
 	trackerButton->setCheckable(true);
-	trackerButton->setText("Start Tracker");
+	trackerButton->setText("Start Tracking");
 	vbox->addWidget(trackerButton);
 
 	mcuButton = new QPushButton;
