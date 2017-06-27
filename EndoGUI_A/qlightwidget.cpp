@@ -5,7 +5,7 @@
 QLightWidget::QLightWidget(QWidget *parent)
 	: QWidget(parent)
 {
-	currColor = Qt::red;				//default = "not tracked"
+	currColor = Qt::blue;				//default = "not tracked"
 	setFixedSize(20, 20);
 }
 
