@@ -5,6 +5,9 @@
 #include <Vision.h>
 #include <LinAlg.h>
 
+#include <iostream>
+#include <fstream>
+
 using namespace std; 
 
 class EndoModel
@@ -17,9 +20,11 @@ public:
 	void convertPointCloudToSurfaceMesh();
 	static void savePointCloudAsPLY(string &filename); 
 	static void savePointCloudAsPCD(string &filename);
-	void addPointToPointCloud(EndoPt);
+	static void addPointToPointCloud(EndoPt point);
 	static void savePointCloud(); 
+	void saveData(EndoPt point);
 
+	ofstream myfile; 
 };
 
 #endif // !ENDOMODEL_H

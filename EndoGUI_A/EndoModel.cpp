@@ -1,4 +1,5 @@
 //PCL includes
+#include <c://Documents/pcl-bin>
 
 //need to get PCL
 
@@ -6,6 +7,7 @@
 #include "EndoModel.h"
 #include "defines.h"
 #include "LinAlg.h"
+#include <MainWindow.h>
 
 //Qt includes
 #include <qdebug.h>
@@ -13,12 +15,21 @@
 #include <qfiledialog.h>
 #include <qfile.h>
 
+//MSDN includes
+#include <iostream>
+#include <fstream>
+
 using namespace pcl;
 using namespace std; 
 
 EndoModel::EndoModel()
 {
 	pointCloud.reset(new PointCloud<PointXYZRGB>);
+
+	ofstream myfile("./Data/Scan.csv"); 
+	myfile << "Cam X," << "Cam Y," << "Cam Z,"
+		<< "Tool X," << "Tool Y," << "Tool Z,"
+		<< "Laser X," << "Laser Y," << "Laser Z" << endl;
 }
 
 void EndoModel::convertPointCloudToSurfaceMesh()
@@ -30,6 +41,7 @@ void EndoModel::savePointCloudAsPLY(string &filename)
 {
 	if (pointCloud->size() == 0) return;
 	pcl::io::savePLYFileASCII(filename, *pointCloud);
+
 }
 
 void EndoModel::savePointCloudAsPCD(string &filename)
@@ -47,6 +59,7 @@ void EndoModel::addPointToPointCloud(EndoPt point)
 	pc.z = point.z;
 	
 	pointCloud->push_back(pc);
+	pointCloud->saveData(point); 
 }
 
 void EndoModel::savePointCloud()
@@ -67,4 +80,16 @@ void EndoModel::savePointCloud()
 			savePointCloudAsPLY(fileName.toStdString());
 		}
 	}
+}
+
+void EndoModel::saveData(EndoPt point)
+{
+	for (int i = 0; i < 3; i++)
+		myfile << MainWindow::getCameraPosition(i, 3) << ",";
+
+	for (int i = 0; i < 3; i++)
+		myfile << MainWindow::getToolPosition(i, 3) << ",";
+
+	myfile << point.x << "," << point.y << "," << point.z << endl; 
+
 }
