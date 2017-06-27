@@ -43,6 +43,41 @@
 #include <QFuture>
 #include <QtConcurrent\qtconcurrentrun.h>
 
+//VTK includes
+#include <vtkProperty.h>
+#include <vtkRenderWindow.h>
+#include <vtkRenderer.h>
+#include <vtkTransform.h>
+#include <vtkImageData.h>
+#include <vtkImageImport.h>
+#include <vtkImageMapper.h>
+#include <vtkRenderWindow.h>
+#include <vtkRenderWindowInteractor.h>
+#include <vtkRenderer.h>
+#include <vtkRendererCollection.h>
+#include <vtkSmartPointer.h>
+#include <vtkTexture.h>
+#include <vtkImageImport.h>
+#include <vtkImageMapper.h>
+
+// Plus
+#include <vtkPlusNDITracker.h>
+#include "PlusTrackedFrame.h"
+#include "PlusConfigure.h"
+#include "vtkCommand.h"
+#include "vtkCallbackCommand.h"
+#include "vtkPlusDataCollector.h"
+#include "vtkPlusChannel.h"
+#include "vtkPlusDataSource.h"
+#include "vtkPlusDevice.h"
+#include "vtkPlusRfProcessor.h"
+#include "vtkPlusSavedDataSource.h"
+#include "vtkPlusVirtualMixer.h"
+#include "C:/RVTK-bin/Deps/Plus-bin/PlusApp/fCal/Toolboxes/QAbstractToolbox.h"
+#include "PlusMath.h"
+#include "PlusXMLUtils.h"
+
+
 //MSDN includes
 #include <Windows.h>
 #include <WinBase.h>
@@ -87,27 +122,14 @@ MainWindow::~MainWindow()
 
 void MainWindow::createMenus()
 {
-	saveAct = new QAction(tr("&Save"), this);
-	saveAct->setShortcuts(QKeySequence::Save);
-	saveAct->setStatusTip(tr("Save video file"));
-	connect(saveAct, SIGNAL(triggered()), this, SLOT(save()));
-
-	openAct = new QAction(tr("&Open"), this);
-	openAct->setShortcuts(QKeySequence::Open);
-	openAct->setStatusTip(tr("Open a saved video file"));
-	connect(openAct, SIGNAL(triggered()), this, SLOT(open()));
-
+	
 	exitAct = new QAction(tr("&Exit"), this);
 	exitAct->setShortcuts(QKeySequence::Quit);
 	exitAct->setStatusTip(tr("Exit application"));
 	connect(exitAct, SIGNAL(triggered()), this, SLOT(exit()));
 
 	// File Menu
-	fileMenu = menuBar()->addMenu(tr("&File"));
-	fileMenu->addMenu(tr("&File"));
-	fileMenu->addAction(openAct);
-	fileMenu->addAction(saveAct);
-	fileMenu->addSeparator();
+	
 	fileMenu->addAction(exitAct);
 
 	//Camera menu actions:
@@ -149,7 +171,6 @@ void MainWindow::createStatusBar()
 
 void MainWindow::createControlDock()
 {
-	
 	controlDock = new QDockWidget(tr("Control Dock"), this);
 	controlDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
 	controlDock->setFeatures(QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetFloatable);
@@ -169,23 +190,23 @@ void MainWindow::createControlDock()
 
 	controlDock->setWidget(mainFrame);
 	
-	controlsWidget = new ControlWidget(this);
-	controlsLayout->addWidget(controlsWidget);
+	controlWidget = new ControlWidget(this);
+	controlsLayout->addWidget(controlWidget);
 
-	connect(controlsWidget->streamButton, SIGNAL(clicked()), this, SLOT(camera_button_clicked()));
-	connect(controlsWidget->saveButton, SIGNAL(clicked()), this,   SLOT(saveButtonPressed()));
-	connect(controlsWidget->mcuButton, SIGNAL(clicked()), this,    SLOT(connectMCU()));
-	connect(controlsWidget->laserButton, SIGNAL(clicked()), this,  SLOT(toggleLaser()));
-	connect(controlsWidget->trackerButton, SIGNAL(clicked()), this,SLOT(startTracker()));
-	connect(controlsWidget->scanButton, SIGNAL(clicked()), this, SLOT(scanButtonPress()));
+	connect(controlWidget->streamButton, SIGNAL(clicked()), this, SLOT(camera_button_clicked()));
+	connect(controlWidget->saveButton, SIGNAL(clicked()), this,   SLOT(saveButtonPressed()));
+	connect(controlWidget->mcuButton, SIGNAL(clicked()), this,    SLOT(connectMCU()));
+	connect(controlWidget->laserButton, SIGNAL(clicked()), this,  SLOT(toggleLaser()));
+	connect(controlWidget->trackerButton, SIGNAL(clicked()), this,SLOT(startTracker()));
+	connect(controlWidget->scanButton, SIGNAL(clicked()), this, SLOT(scanButtonPress()));
 
-	//create timer to refresh the image every x milliseconds depending on the framerate of the camera
-	timer = new QTimer(this);
-	connect(timer, SIGNAL(timeout()), this, SLOT(update_image()));
+	//create trackTimer to refresh the image every x milliseconds depending on the framerate of the camera
+	trackTimer = new QTimer(this);
+	connect(trackTimer, SIGNAL(timeout()), this, SLOT(updateTracker()));
 }
 
 void MainWindow::startTracker()
-{/*
+{
 	if (!trackerInit)
 	{
 		if (dataCollector->GetDevice(trackerDevice, "TrackerDevice") != PLUS_SUCCESS) {
@@ -198,14 +219,14 @@ void MainWindow::startTracker()
 			if (dataCollector->GetDevice(webcamDevice, "VideoDevice") != PLUS_SUCCESS)
 			{
 				qDebug() << "Unable to locate the device with ID = \"VideoDevice\". Check config file.";
-				exit;
+				return;
 			}
 
 			// Get virtual mixer
 			if (dataCollector->GetDevice(mixerDevice, "TrackedVideoDevice") != PLUS_SUCCESS)
 			{
 				qDebug() <<"Unable to locate the device with ID = \"TrackedVideoDevice\". Check config file.";
-				exit;
+				return;
 			}
 			webcamVideo = dynamic_cast<vtkPlusMmfVideoSource *>(webcamDevice);
 			mixer = dynamic_cast<vtkPlusVirtualMixer *>(mixerDevice);
@@ -217,33 +238,77 @@ void MainWindow::startTracker()
 			if (dataCollector->GetDevice(endoDevice, "VideoDevice") != PLUS_SUCCESS)
 			{
 				qDebug() << "Unable to locate the device with ID = \"VideoDevice\". Check config file.";
-				exit;
+				return;
 			}
 
 			// Get virtual mixer
 			if (dataCollector->GetDevice(mixerDevice, "TrackedVideoDevice") != PLUS_SUCCESS)
 			{
 				qDebug() << "Unable to locate the device with ID = \"TrackedVideoDevice\". Check config file.";
-				exit;
+				return;
 			}
 			endoVideo = dynamic_cast<vtkPlusMmfVideoSource *>(endoDevice);
 			mixer = dynamic_cast<vtkPlusVirtualMixer *>(mixerDevice);
 		}
-	}
 
+		ndiTracker = dynamic_cast<vtkPlusNDITracker *>(trackerDevice);
+		if (ndiTracker == NULL)
+		{
+			LOG_ERROR("Tracking device is not NDI/Polaris/Aurora. Could not connect.");
+			statusBar()->showMessage(tr("Could not connect!"), 5000);
+			return; 
+		}
+
+		// Connect to devices
+		std::cout << "Connecting to NDI Polaris through COM" << ndiTracker->GetSerialPort();
+		if (dataCollector->Connect() != PLUS_SUCCESS)
+		{
+			std::cout << "....................... [FAILED]" << std::endl;
+			LOG_ERROR("Failed to connect to devices!");
+			statusBar()->showMessage(tr("Failed to connect to devices!"), 5000);
+			return; 
+		}
+
+		if (dataCollector->Start() != PLUS_SUCCESS)
+		{
+			LOG_ERROR("Failed to connect to devices!");
+			statusBar()->showMessage(tr("Failed to connect to devices!"), 5000);
+			return; 
+		}
+
+		std::cout << "....................... [OK]" << std::endl;
+
+		if (repository->ReadConfiguration(configRootElement) != PLUS_SUCCESS)
+		{
+			LOG_ERROR("Configuration incorrect for vtkPlusTransformRepository.");
+			statusBar()->showMessage(tr("Configuration incorrect for vtkPlusTransformRepository."), 5000);
+			return; 
+		}
+
+		if (ndiTracker->GetOutputChannelByName(trackerChannel, "TrackerStream") != PLUS_SUCCESS)
+		{
+			LOG_ERROR("Unable to locate the channel with Id = \"TrackerStream\". check config file.");
+			statusBar()->showMessage(tr("Unable to locate the channel"), 5000);
+			return; 
+		}
+
+		trackTimer->start(40); //minimum is 17 ms
+		trackerInit = true; 
+	}
 
 	else  //already initalized - unitialize...
 	{
-		//trackerTimer->stop();
-		controlsWidget->trackerButton->setText(tr("Stop Tracking"));
+		trackTimer->stop();
+		controlWidget->trackerButton->setText(tr("Stop Tracking"));
 		statusBar()->showMessage(tr("Stopping Tracking"));
 	}
-	*/
+	
 }
 
 void MainWindow::createVTKObject()
 {
-	intrinsicsFile = "./config/calibration.xml";
+	//not sure this is used :
+	//intrinsicsFile = "./config/calibration.xml";
 
 	if (webcam->isChecked())
 		configFile = "./config/configWebcam.xml";
@@ -263,20 +328,11 @@ void MainWindow::createVTKObject()
 		ERROR_ALREADY_EXISTS != GetLastError())
 		std::cout << "calibration directory created." << std::endl;
 
-
-
-	/*
-
-
-	trackerDevice = NULL;
-
-	
-
 	// Read configuration file
 	if (PlusXmlUtils::ReadDeviceSetConfigurationFromFile(configRootElement, configFile.c_str()) == PLUS_FAIL)
 	{
 		cout << "Unable to read configuration from file" << configFile.c_str() <<endl;
-		exit;
+		return;
 	}
 
 	vtkPlusConfig::GetInstance()->SetDeviceSetConfigurationData(configRootElement);
@@ -285,11 +341,8 @@ void MainWindow::createVTKObject()
 	if (dataCollector->ReadConfiguration(configRootElement) != PLUS_SUCCESS)
 	{
 		cout << "Configuration incorrect for vtkPlusDataCollector." <<endl;
-		exit;
+		return;
 	}	
-
-	*/
-
 }
 
 void MainWindow::camera_button_clicked()
@@ -304,19 +357,18 @@ void MainWindow::camera_button_clicked()
 			frameHeight = capture.get(CV_CAP_PROP_FRAME_HEIGHT);
 			framePd = 1000 / (int)capture.get(CV_CAP_PROP_FPS);
 			playing = true;
-			controlsWidget->streamButton->setText(tr("Stop Stream"));
-			timer->start(30);	//need to fix framePd and override 34
-
+			controlWidget->streamButton->setText(tr("Stop Stream"));
+			
 		}
 		else
 			statusBar()->showMessage(tr("Unable to Detect Camera"), 3000);
 	}
 
 	else {
-		controlsWidget->streamButton->setText(tr("Stream Video"));
+		controlWidget->streamButton->setText(tr("Stream Video"));
 		statusBar()->showMessage(tr("Ready"), 7000);
 		playing = false;
-		timer->stop();
+		trackTimer->stop();
 	}
 }
 
@@ -327,6 +379,7 @@ void MainWindow::update_image()
 
   	if (capture.isOpened())
 	{
+		
 		cv::namedWindow("Control", CV_WINDOW_NORMAL);
 		cvCreateTrackbar("Brightness", "Control", &brightness, 40);
 		cvCreateTrackbar("Contrast", "Control", &contrast, 40); 
@@ -355,6 +408,10 @@ void MainWindow::update_image()
 			qWarning() << "Type Not Handled";
 			break;
 		}
+		
+		if (isSaving)
+			saveVideo();
+
 		repaint();
 	}
 	else
@@ -366,17 +423,17 @@ void MainWindow::scanButtonPress()
 	if (!scanningStatus) {
 		scanTimer = new QTimer(this);
 		connect(scanTimer, SIGNAL(timeout()), this, SLOT(scan()));
-		controlsWidget->scanButton->setText(tr("Stop Scan"));
-		scanningStatus = true; 
+		controlWidget->scanButton->setText(tr("Stop Scan"));
 		scanTimer->start(30);
 		scanningStatus = true; 
-		Vision* visionIns = new Vision(); 
-				
+		visionIns = new Vision(); 
+		model = new EndoModel();
+		
 	}
 	else {
-		controlsWidget->scanButton->setText(tr("Start Scan"));
+		controlWidget->scanButton->setText(tr("Start Scan"));
 		scanTimer->stop();
-		EndoModel::savePointCloud();
+		model->savePointCloud();
 		scanningStatus = false; 
 	}
 }
@@ -391,11 +448,9 @@ void MainWindow::scan()
 	else if (scancount == 5) {			//effectively delayed 120ms
 		if (togglecount % 2 == 0)
 			capture >> laserOnImg;
-		else {
+		else 
 			capture >> laserOffImg;
-			if (isSaving)
-				saveVideo();
-		}
+				
 		scancount = 0;
 	}
 	if (laserOnImg.empty() || laserOffImg.empty())	//only true for toggle count = 1
@@ -403,19 +458,44 @@ void MainWindow::scan()
 
 	if (togglecount % 2 == 0)	//have both laser on and off successive images
 	{
-		visionIns->framePointsToCloud(laserOffImg, laserOnImg, 1);
+		visionIns->framePointsToCloud(laserOffImg, laserOnImg, 1, model);
 	
 	}
-
-	
-
 }
 
-void MainWindow::getPosition()
+void MainWindow::updateTracker()
+{	
+	 if (trackerInit)
+	{
+		if (playing)
+			update_image();
+
+		bool isToolMatrixValid = false; 
+
+		if (repository->GetTransform(tool2TrackerName, tool2Tracker, &isToolMatrixValid) == PLUS_SUCCESS && isToolMatrixValid)
+			controlWidget->lightWidgets[1]->setGreen();
+		else
+			controlWidget->lightWidgets[1]->setRed(); 
+
+		bool isCameraMatrixValid = false; 
+
+		if (repository->GetTransform(camera2TrackerName, camera2Tracker, &isCameraMatrixValid) == PLUS_SUCCESS && isCameraMatrixValid)
+			controlWidget->lightWidgets[0]->setGreen();
+		else
+			controlWidget->lightWidgets[0]->setRed(); 
+	}
+}
+
+double MainWindow::getCameraPosition(int i, int j)		//x: (0,3), y:(1,3), z:(2,3)
 {
-	//return position of laser pointer and camera being tracked
-
+	return camera2Tracker->GetElement(i, j);
 }
+
+double MainWindow::getToolPosition(int i, int j)
+{
+	return tool2Tracker->GetElement(i, j);
+}
+
 void MainWindow::saveButtonPressed()
 {
 	if (isReadyToSave && capture.isOpened()) {
@@ -424,7 +504,7 @@ void MainWindow::saveButtonPressed()
 		int mode = capture.get(CV_CAP_PROP_MODE);
 
 		QString filename = QFileDialog::getSaveFileName(this, tr("Save File"),
-			"C:/users/jgeurten/Videos/untitled",
+			"./Videos/untitled",
 			tr("AWI File (*.avi);; All Files(*.)"));
 
 		if (!filename.isEmpty())
@@ -437,7 +517,7 @@ void MainWindow::saveButtonPressed()
 
 			if (gVideoWrite.isOpened())
 			{
-				controlsWidget->saveButton->setText("End Saving Video");
+				controlWidget->saveButton->setText("End Saving Video");
 				isReadyToSave = false;
 				isSaving = true;
 			}
@@ -447,7 +527,7 @@ void MainWindow::saveButtonPressed()
 	}
 	else
 	{
-		controlsWidget->saveButton->setText("Save Video");
+		controlWidget->saveButton->setText("Save Video");
 		gVideoWrite.release();		//release to close open file and finish saving process
 		isReadyToSave = true;
 		isSaving = false;
@@ -478,12 +558,12 @@ void MainWindow::toggleLaser()
 	if (mcuConnected && !laserOn) {
 		comPort->write("G21");
 		laserOn = true;
-		controlsWidget->laserButton->setText(tr("Laser Off"));
+		controlWidget->laserButton->setText(tr("Laser Off"));
 	}
 	else if (mcuConnected && laserOn){
 		comPort->write("G32");
 		laserOn = false;
-		controlsWidget->laserButton->setText(tr("Laser On"));
+		controlWidget->laserButton->setText(tr("Laser On"));
 }
 	else {
 		statusBar()->showMessage(tr("Connect MCU First"), 2000);
@@ -508,7 +588,7 @@ void MainWindow::connectMCU() {
 			comPort = new Serial(portname);	//call Serial constructor in Serial.cpp
 
 		if (comPort->isConnected()) {
-			controlsWidget->mcuButton->setText(tr("Disconnect MCU"));
+			controlWidget->mcuButton->setText(tr("Disconnect MCU"));
 			statusBar()->showMessage(tr("MCU Connected"), 2000);
 			mcuConnected = true;
 		}
@@ -519,26 +599,12 @@ void MainWindow::connectMCU() {
 		delete comPort;
 		mcuConnected = false;
 		statusBar()->showMessage(tr("MCU Disconnected."), 2000);
-		controlsWidget->mcuButton->setText(tr("Connect MCU"));
+		controlWidget->mcuButton->setText(tr("Connect MCU"));
 	}
 }
 
 void MainWindow::camWebcam(bool checked)
 {
-	if (checked)
-	{
-		endoCam->setChecked(false);
-	}
-
-	else
-	{
-		
-		webcam->setCheckable(true);
-		endoCam->setCheckable(true);
-	}
-	/*
-
-
 	if (checked)
 	{
 		dataCollector->Stop();
@@ -554,7 +620,7 @@ void MainWindow::camWebcam(bool checked)
 
 		bool isMatrixValid(false);
 		repository->SetTransforms(mixerFrame);
-		if (repository->GetTransform(PlusTransformName("Webcam", "Tracker"), tCam2Tracker, &isMatrixValid) == PLUS_SUCCESS && isMatrixValid)
+		if (repository->GetTransform(PlusTransformName("Webcam", "Tracker"), camera2Tracker, &isMatrixValid) == PLUS_SUCCESS && isMatrixValid)
 		{
 			statusBar()->showMessage(tr("Webcam now being used & tracked"), 5000);
 		}
@@ -573,23 +639,12 @@ void MainWindow::camWebcam(bool checked)
 		endoCam->setCheckable(true);
 	}
 
-	*/
+	
 }
 
 void MainWindow::camEndocam(bool checked)
 {
-	if (checked)
-	{
-		webcam->setChecked(false);
-	}
-
-	else
-	{
-
-		webcam->setCheckable(true);
-		endoCam->setCheckable(true);
-	}
-	/*
+	
 	if (checked)
 	{
 		dataCollector->Stop();
@@ -607,7 +662,7 @@ void MainWindow::camEndocam(bool checked)
 
 		bool isMatrixValid(false);
 		repository->SetTransforms(mixerFrame);
-		if (repository->GetTransform(PlusTransformName("Endo", "Tracker"), tCam2Tracker, &isMatrixValid) == PLUS_SUCCESS && isMatrixValid)
+		if (repository->GetTransform(PlusTransformName("Endo", "Tracker"), camera2Tracker, &isMatrixValid) == PLUS_SUCCESS && isMatrixValid)
 		{
 			statusBar()->showMessage(tr("Endoscope now being used & tracked"), 5000);
 		}
@@ -622,57 +677,9 @@ void MainWindow::camEndocam(bool checked)
 
 		createVTKObject();
 		endoCam->setChecked(false);
-	}
-
-	*/
-	
-}
-void MainWindow::load_button_clicked()
-{
-	//
-}
-void MainWindow::run()
-{
-
+	}	
 }
 
-void MainWindow::showImage(const cv::Mat& image)
-{
-
-}
-
-
-void MainWindow::stop()
-{
-
-}
-
-void MainWindow::toggleScan()
-{
-
-}
-
-void MainWindow::toggleCamera()
-{
-
-}
-void MainWindow::calibrateCamera()
-{
-
-}
-
-void MainWindow::open()
-{
-
-}
-void MainWindow::exit()
-{
-
-}
-void MainWindow::save()
-{
-
-}
 
 void MainWindow::help()
 {

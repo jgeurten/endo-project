@@ -2,6 +2,12 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
+//Local includes
+#include "Serial.h"
+#include "Vision.h"
+#include "qlightwidget.h"
+#include "ControlWidget.h"
+
 //QT includes
 #include <qmainwindow.h>
 #include <qmenu.h>
@@ -19,21 +25,43 @@
 #include <qmediaplayer.h>
 #include <qthread.h>
 
-//Local includes
-#include "Serial.h"
-#include "Vision.h"
-#include "qlightwidget.h"
-#include "ControlWidget.h"
-
+// VTK Includes
+#include <vtkSmartPointer.h>
+#include <vtkMatrix4x4.h>
+#include <vtkActor.h>
+#include <vtkTexture.h>
+#include <vtkRenderWindow.h>
+#include <vtkRenderer.h>
+#include <vtkImageImport.h>
 
 //opencv includes
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 
+//Plus includes:
+
+#include <vtkPlusDataCollector.h>
+#include "PlusConfigure.h"
+#include "vtkPlusTransformRepository.h"
+#include "PlusTrackedFrame.h"
+#include "vtkPlusChannel.h"
+#include <vtkPlusNDITracker.h>
+#include <vtkPlusVolumeReconstructor.h>
+#include <vtkPlusMmfVideoSource.h>
+#include <vtkPlusOpenIGTLinkVideoSource.h>
+#include "C:/RVTK-bin/Deps/Plus-bin/PlusApp/fCal/Toolboxes/QAbstractToolbox.h"
+
+
 //using namespace cv;
 using namespace std;
 
+// VTK forward declaration
+class QVTKWidget;
+class vtkRenderer;
+class vtkTexture;
+class vtkImageImport;
+class vtkTrackerTool;
 class ControlWidget; 
 
 namespace Ui {
@@ -49,65 +77,46 @@ public:
 	~MainWindow();
 
 private:
-	int framePd;	// period of frame rate
-	bool isReadyToSave, isSaving, playing, mcuConnected, laserOn, trackerInit, scanningStatus;
-	
-	vector<cv::Vec4i> lines;
-	cv::Point point1, point2;
-
-	string portname;
-	string configFile, intrinsicsFile, resultsDir, calibDir; 
-
-	Serial *comPort; 
-	cv::Mat streamImg, laserOnImg, laserOffImg;
-	cv::Mat frame;
-	cv::Mat savingMat;
-	string fileName;
-	cv::VideoCapture capture;
-	cv::VideoWriter gVideoWrite;
-	int frameWidth, frameHeight;
-	
-	int scancount = 0; 
-	int togglecount = 0; 
-	int brightness = 6;
-	int contrast = 18;
-	
+		
 	void createMenus(); 
+
 	void createControlDock();
+
 	void createStatusBar();
+
 	void createVTKObject();
 
-	QMenu		*fileMenu;
-	QMenu		*helpMenu;
-	QMenu		*cameraMenu; 
-	QAction		*openAct;
-	QAction		*saveAct;
-	QAction		*exitAct;
-	QAction		*aboutAct;
-	QAction		*helpAct;
-	QAction		*webcam; 
-	QAction		*endoCam; 
+	QMenu			*fileMenu;
+	QMenu			*helpMenu;
+	QMenu			*cameraMenu; 
+	QAction			*openAct;
+	QAction			*saveAct;
+	QAction			*exitAct;
+	QAction			*aboutAct;
+	QAction			*helpAct;
+	QAction			*webcam; 
+	QAction			*endoCam; 
 
-	QWidget		*videoWidget;
-	QPushButton *pushButton;
-	QPushButton *pushButton_2;
-	QPushButton *pushButton_3;
-	QPushButton	*pushButton_4;
+	QWidget			*videoWidget;
+	QPushButton		*pushButton;
+	QPushButton		*pushButton_2;
+	QPushButton		*pushButton_3;
+	QPushButton		*pushButton_4;
 
-	QMediaPlayer *player;
-	QTimer		*timer;
-	QTimer		*scanTimer; 
-	QDockWidget *controlDock; 
-	ControlWidget *controlsWidget;
-	QImage		image;
-	QPixmap		pixLabel;
-	QLabel		*videoLabel;
-	QSize		*size;
-	QThread		*streamThread; 
+	QMediaPlayer	*player;
+	QTimer			*trackTimer;
+	QTimer			*scanTimer; 
+	QDockWidget		*controlDock; 
+	ControlWidget	*controlWidget;
+	QImage			 image;
+	QPixmap			 pixLabel;
+	QLabel			*videoLabel;
+	QSize			*size;
+	QThread			*streamThread; 
 
-
-	Vision		*visionIns; 
-	/*
+	EndoModel		*model; 
+	Vision			*visionIns; 
+	
 
 	// Plus members
 	vtkSmartPointer<vtkXMLDataElement>				configRootElement = vtkSmartPointer<vtkXMLDataElement>::New();
@@ -120,10 +129,21 @@ private:
 	vtkPlusDevice									*webcamDevice;
 	vtkPlusDevice									*endoDevice;
 
+	//Plus transforms
+	vtkSmartPointer<vtkMatrix4x4>					camera2Image = vtkSmartPointer<vtkMatrix4x4>::New();
+	vtkSmartPointer<vtkMatrix4x4>					tool2Tracker = vtkSmartPointer<vtkMatrix4x4>::New();
+	vtkSmartPointer<vtkMatrix4x4>					camera2Tracker = vtkSmartPointer<vtkMatrix4x4>::New();
+
+	// Plus Transform Names
+	PlusTransformName								camera2TrackerName = PlusTransformName("Camera", "Tracker");
+	PlusTransformName								tool2TrackerName = PlusTransformName("Tool", "Tracker");
+	PlusTransformName								camera2ImageName = PlusTransformName("Camera", "ImagePlane");
+
 	// Mixers
 	vtkPlusDevice									*mixerDevice;
 	vtkPlusDevice									*leftMixerDevice;
 	vtkPlusDevice									*rightMixerDevice;
+	vtkSmartPointer<vtkPlusVirtualMixer>			mixer = vtkSmartPointer<vtkPlusVirtualMixer>::New();
 
 	// Channels
 	vtkPlusChannel									*trackerChannel;
@@ -142,14 +162,36 @@ private:
 	PlusTrackedFrame								mixerFrame;
 
 	vtkPlusNDITracker								*ndiTracker;
-	vtkPlusOvrvisionProVideoSource					*ovrVideo;
 	vtkPlusMmfVideoSource							*webcamVideo;
 	vtkPlusMmfVideoSource							*endoVideo;
 	vtkPlusOpenIGTLinkVideoSource					*ultrasoundVideo;
 
-	*/
+	QImage mat_to_qimage(cv::Mat frame, QImage::Format format);
 
-	public slots:
+	int					framePd;	// period of frame rate
+	bool				isReadyToSave, isSaving, playing, mcuConnected, laserOn, trackerInit, scanningStatus;
+
+	vector<cv::Vec4i>	lines;
+	cv::Point			point1, point2;
+
+	string				portname;
+	string				configFile, intrinsicsFile, resultsDir, calibDir;
+
+	Serial				*comPort;
+	cv::Mat				streamImg, laserOnImg, laserOffImg;
+	cv::Mat				frame;
+	cv::Mat				savingMat;
+	string				fileName;
+	cv::VideoCapture	capture;
+	cv::VideoWriter		gVideoWrite;
+	int					frameWidth, frameHeight;
+
+	int					scancount = 0;
+	int					togglecount = 0;
+	int					brightness = 6;
+	int					contrast = 18;
+
+	private slots:
 
 	void toggleLaser();
 	void toggleScan();
@@ -166,6 +208,8 @@ private:
 	void scan();
 	void camWebcam(bool);
 	void camEndocam(bool);
+	void updateTracker(); 
+	
 
 	void update_image();
 	void saveVideo();
@@ -177,7 +221,11 @@ private:
 	void help();
 	void about();
 
-	QImage mat_to_qimage(cv::Mat frame, QImage::Format format);
+	public slots:
+
+	static double getCameraPosition(int i, int j);
+	static double getToolPosition(int i, int j);
+	
 
 protected:
 	
