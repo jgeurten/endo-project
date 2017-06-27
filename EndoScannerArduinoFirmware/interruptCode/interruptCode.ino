@@ -52,5 +52,6 @@ void buttonPress() {
 
 ISR(TIMER1_COMPA_vect) {
   laserState = !laserState;
+  laserState = HIGH;  //for constant laser line
 }
 
