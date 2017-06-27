@@ -59,7 +59,7 @@ ControlWidget::ControlWidget(QWidget *parent)
 
 	hbox = new QHBoxLayout;
 	label = new QLabel;
-	label->setText(tr("Tracked Laser"));
+	label->setText(tr("Tracked Tool"));
 	label->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
 	hbox->addWidget(label);
 	lw = new QLightWidget;
