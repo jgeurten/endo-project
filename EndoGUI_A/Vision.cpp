@@ -17,7 +17,6 @@ using namespace std;
 
 Vision::Vision()
 {
-	 
 }
 
 Vision::~Vision()
@@ -86,20 +85,24 @@ vector<cv::Vec4i> Vision::detectLaserLine(cv::Mat &laserOff, cv::Mat &laserOn)
 }
 
 
-void Vision::framePointsToCloud(cv::Mat &laserOff, cv::Mat &laserOn,  int res)
+void Vision::framePointsToCloud(cv::Mat &laserOff, cv::Mat &laserOn,  int res, EndoModel* model)
 {
-	EndoModel* model = new EndoModel(); 
+	//EndoModel* model = new EndoModel(); 
 	cv::Mat laserLineImg = subtractLaser(laserOff, laserOn);
 
-	EndoPt camera, laserPt1, laserPt2; 
+	EndoPt camera , laserPt1, laserPt2, detectedPt;
+
+	camera.x = MainWindow::getCameraPosition(0, 3);
+	camera.y = MainWindow::getCameraPosition(1, 3);
+	camera.z = MainWindow::getCameraPosition(2, 3);
+
 	//get position of laser pointer() - need positions of fiducials positioned axial to the laser pointer
-	//get position of camera()
+	
 
 	for (int row = HORIZONTAL_OFFSET; row <  laserLineImg.rows - HORIZONTAL_OFFSET; row += res) {
 		for (int col = VERTICAL_OFFSET; col <  laserLineImg.cols - VERTICAL_OFFSET; col++) {
 			if (laserLineImg.at<uchar>(row, col) == 255) {
 
-				EndoPt detectedPt; 
 				detectedPt.x = col; 
 				detectedPt.y = row; 
 
@@ -138,7 +141,7 @@ cv::Point2i Vision::getLaserPosition(vector<cv::Vec4i> lines)
 }
 
 void Vision::cvPointsToCloud(cv::Mat &laserOff, cv::Mat &laserOn)
-{
+{	/*
 	//Detect non-incident laser line. Reflection line
 
 	cv::Mat laserLine, bwLaserLine; 
@@ -172,7 +175,8 @@ void Vision::cvPointsToCloud(cv::Mat &laserOff, cv::Mat &laserOn)
 				
 		}
 	}
-	addPointToPointCloud(reflectLaser);
+	EndoModel::addPointToPointCloud(reflectLaser);
+	*/
 }
 
 

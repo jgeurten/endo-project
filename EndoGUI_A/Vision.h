@@ -9,7 +9,11 @@
 #include <opencv2/opencv.hpp>
 #include <math.h>
 
+#include <EndoModel.h>
+
 using namespace std;
+
+class EndoModel; 
 
 class Vision
 {
@@ -22,7 +26,9 @@ public:
 	static void cvPointsToCloud(cv::Mat &laserOff, cv::Mat &laserOn);
 
 	static cv::Point2i getLaserPosition(vector<cv::Vec4i> lines);
-	static void framePointsToCloud(cv::Mat &laserOff, cv::Mat &laserOn, int res); 
+	static void framePointsToCloud(cv::Mat &laserOff, cv::Mat &laserOn, int res, EndoModel* model);
+
+	EndoModel* model; 
 		
 };
 #endif
