@@ -5,7 +5,7 @@
 
 // structures:
 
-typedef struct _EndoPt
+typedef struct EndoPt
 {
 	double x;
 	double y;
@@ -13,7 +13,7 @@ typedef struct _EndoPt
 
 } EndoPt;
 
-typedef struct _EndoLine	//really composed of two 'points'
+typedef struct EndoLine	//really composed of two 'points'
 {
 	EndoPt a;
 	EndoPt b;
@@ -31,7 +31,7 @@ static EndoPt MakePoint(double x, double y, double z)
 	return pt;
 }
 
-static EndoLine MakeLine(EndoLine a, EndoPt b)
+static EndoLine MakeLine(EndoPt a, EndoPt b)
 {
 	EndoLine line;
 	line.a.x = a.x;
@@ -71,17 +71,17 @@ EndoPt intersectionOfLines(EndoLine l1, EndoLine l2)
 	EndoPt bcross, across, adelta, result;
 	bcross = CrossProduct(l1.b, l2.b);
 	if (bcross.x == 0 && bcross.y == 0 && bcross.z == 0)
-		return;
+		return MakePoint(0.0, 0.0, 0.0);
 
-	adelta.x = l2.x - l1.x;
-	adelta.y = l2.y - l1.y;
-	adelta.z = l2.z - l1.z;
-
-	across = CrossProduct(adelta, ls.b);
+	adelta.x = l2.a.x - l1.a.x;
+	adelta.y = l2.a.y - l1.a.y;
+	adelta.z = l2.a.z - l1.a.z;
+						   
+	across = CrossProduct(adelta, l2.b);
 
 	//may have to be range .. unsure about precision of tracking
 	if (across.x / bcross.x != across.y / bcross.y || across.x / bcross.x != across.z / bcross.z)
-		return;
+		return MakePoint(0.0, 0.0, 0.0);
 
 	t = across.x / bcross.x;
 	result.x = l1.a.x + t*l1.b.x;
