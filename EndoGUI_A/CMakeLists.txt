@@ -17,6 +17,12 @@ SET(CMAKE_AUTORCC ON)
 
 FIND_PACKAGE(OpenCV REQUIRED NO_MODULE)
 
+FIND_PACKAGE(PlusLib REQUIRED NO_MODULE)
+FIND_PACKAGE(PCL REQUIRED NO_MODULE)
+
+FIND_PACKAGE( vtk REQUIRED)
+INCLUDE(${VTK_USE_FILE})
+
 file(GLOB EndoScannerArduinoFirmware_headers RELATIVE "EndoScannerArduinoFirmware" "*.h")
 file(GLOB EndoScannerArduinoFirmware_Sources RELATIVE "EndoScannerArduinoFirmware" "*.cpp")
 
@@ -29,7 +35,6 @@ ADD_EXECUTABLE(EndoScanner
 	Vision.cpp
 	qlightwidget.cpp
 	Controlwidget.cpp
-	EndoLaser.cpp
 	EndoModel.cpp
 
 	${EndoScannerArduinoFirmware_Sources}
@@ -40,7 +45,6 @@ ADD_EXECUTABLE(EndoScanner
 	Vision.h
 	qlightwidget.h
 	Controlwidget.h
-	EndoLaser.h
 	EndoModel.h
 	defines.h
 	LinAlg.h
@@ -55,4 +59,15 @@ TARGET_LINK_LIBRARIES (EndoScanner
 	Qt5::MultimediaWidgets
 	Qt5::Multimedia
 	${OpenCV_LIBS}
+	vtksys
+	vtkglew
+	vtkPlusCalibration
+	vtkPlusCommon
+	vtkPlusDataCollection
+	vtkPlusHaptics
+	vtkPlusImageProcessing
+	vtkPlusOpenIGTLink
+	vtkPlusRendering
+	vtkPlusServer
+	${PCL_LIBS}
 )
