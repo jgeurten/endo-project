@@ -1,7 +1,16 @@
 //PCL includes
-#include <c://Documents/pcl-bin>
+#include <pcl/point_cloud.h>
+#include <pcl/kdtree/kdtree_flann.h>
+#include <pcl/features/normal_3d.h>
+#include <pcl/surface/gp3.h>
+#include <pcl/common/common.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/features/normal_3d_omp.h>
+#include <pcl/surface/mls.h>
+#include <pcl/surface/poisson.h>
+#include <pcl/io/vtk_io.h>
+#include <pcl/io/ply_io.h>
 
-//need to get PCL
 
 //Local includes
 #include "EndoModel.h"
@@ -19,14 +28,13 @@
 #include <iostream>
 #include <fstream>
 
-using namespace pcl;
 using namespace std; 
 
 EndoModel::EndoModel()
 {
-	pointCloud.reset(new PointCloud<PointXYZRGB>);
+	this->pointCloud = new pcl::PointCloud<pcl::PointXYZ>;
 
-	ofstream myfile("./Data/Scan.csv"); 
+	ofstream myfile("./Data/Scan.csv");
 	myfile << "Cam X," << "Cam Y," << "Cam Z,"
 		<< "Tool X," << "Tool Y," << "Tool Z,"
 		<< "Laser X," << "Laser Y," << "Laser Z" << endl;
@@ -53,33 +61,13 @@ void EndoModel::savePointCloudAsPCD(string &filename)
 void EndoModel::addPointToPointCloud(EndoPt point)
 {
 	//convert EndoPt to pcl point:
-	PointXYZRGB pc;
+	pcl::PointXYZ pc;
 	pc.x = point.x;
 	pc.y = point.y;
 	pc.z = point.z;
 	
 	pointCloud->push_back(pc);
-	pointCloud->saveData(point); 
-}
-
-void EndoModel::savePointCloud()
-{
-	QFileDialog d(*pointCloud, "Save File", "", "PCD (*.pcd) ;; PLY (*.ply)");
-	d.setAcceptMode(QFileDialog::AcceptSave);
-	if (d.exec()) {
-		QString fileName = d.selectedFiles()[0];
-		//fileName.append(d.selectedNameFilter());
-		if (fileName.isEmpty()) return;
-		qDebug() << fileName;
-		if (fileName.endsWith(".pcd", Qt::CaseInsensitive)) {
-			qDebug() << "Save as pcd file.";
-			savePointCloudAsPCD(fileName.toStdString());
-		}
-		else if (fileName.endsWith(".ply", Qt::CaseInsensitive)) {
-			qDebug() << "Save as ply file.";
-			savePointCloudAsPLY(fileName.toStdString());
-		}
-	}
+	this->saveData(point);
 }
 
 void EndoModel::saveData(EndoPt point)

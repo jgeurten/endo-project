@@ -5,6 +5,18 @@
 #include <Vision.h>
 #include <LinAlg.h>
 
+//PCL includes
+#include <pcl/point_cloud.h>
+#include <pcl/kdtree/kdtree_flann.h>
+#include <pcl/features/normal_3d.h>
+#include <pcl/surface/gp3.h>
+#include <pcl/common/common.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/features/normal_3d_omp.h>
+#include <pcl/surface/mls.h>
+#include <pcl/surface/poisson.h>
+#include <pcl/io/vtk_io.h>
+
 #include <iostream>
 #include <fstream>
 
@@ -18,13 +30,13 @@ public:
 
 	EndoModel();
 	void convertPointCloudToSurfaceMesh();
-	static void savePointCloudAsPLY(string &filename); 
-	static void savePointCloudAsPCD(string &filename);
-	static void addPointToPointCloud(EndoPt point);
-	static void savePointCloud(); 
+	void savePointCloudAsPLY(string &filename); 
+	void savePointCloudAsPCD(string &filename);
+	void addPointToPointCloud(EndoPt point);
 	void saveData(EndoPt point);
 
-	ofstream myfile; 
+	ofstream myfile;
+	pcl::PointCloud<pcl::PointXYZ> *pointCloud;
 };
 
 #endif // !ENDOMODEL_H
