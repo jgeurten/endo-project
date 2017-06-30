@@ -33,6 +33,7 @@
 #include <vtkRenderWindow.h>
 #include <vtkRenderer.h>
 #include <vtkImageImport.h>
+#include <vtk_glew.h>
 
 //opencv includes
 #include <opencv2/core/core.hpp>
@@ -131,7 +132,7 @@ private:
 
 	//Plus transforms
 	vtkSmartPointer<vtkMatrix4x4>					camera2Image = vtkSmartPointer<vtkMatrix4x4>::New();
-	vtkSmartPointer<vtkMatrix4x4>					tool2Tracker = vtkSmartPointer<vtkMatrix4x4>::New();
+	
 	vtkSmartPointer<vtkMatrix4x4>					camera2Tracker = vtkSmartPointer<vtkMatrix4x4>::New();
 
 	// Plus Transform Names
@@ -194,13 +195,8 @@ private:
 	private slots:
 
 	void toggleLaser();
-	void toggleScan();
-	void toggleCamera();
-	void calibrateCamera();
-		
 	void camera_button_clicked();
-	void showImage(const cv::Mat& image);
-	void load_button_clicked();
+	
 	void saveButtonPressed();
 	void connectMCU();
 	void startTracker();
@@ -209,7 +205,7 @@ private:
 	void camWebcam(bool);
 	void camEndocam(bool);
 	void updateTracker(); 
-	
+	void savePointCloud(); 
 
 	void update_image();
 	void saveVideo();
@@ -221,11 +217,13 @@ private:
 	void help();
 	void about();
 
-	public slots:
+public slots:
 
 	static double getCameraPosition(int i, int j);
 	static double getToolPosition(int i, int j);
-	
+
+public:
+	vtkSmartPointer<vtkMatrix4x4>					tool2Tracker = vtkSmartPointer<vtkMatrix4x4>::New();
 
 protected:
 	

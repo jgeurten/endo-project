@@ -85,7 +85,7 @@
 #include <string>
 
 using namespace std;
-//using namespace cv;
+
 //constructor
 
 class ControlWidget;
@@ -198,7 +198,7 @@ void MainWindow::createControlDock()
 	connect(controlWidget->mcuButton, SIGNAL(clicked()), this,    SLOT(connectMCU()));
 	connect(controlWidget->laserButton, SIGNAL(clicked()), this,  SLOT(toggleLaser()));
 	connect(controlWidget->trackerButton, SIGNAL(clicked()), this,SLOT(startTracker()));
-	connect(controlWidget->scanButton, SIGNAL(clicked()), this, SLOT(scanButtonPress()));
+	connect(controlWidget->scanButton, SIGNAL(clicked()), this,   SLOT(scanButtonPress()));
 
 	//create trackTimer to refresh the image every x milliseconds depending on the framerate of the camera
 	trackTimer = new QTimer(this);
@@ -348,7 +348,7 @@ void MainWindow::createVTKObject()
 void MainWindow::camera_button_clicked()
 {
 	if (!playing) {
-		capture = cv::VideoCapture(0);
+		capture = cv::VideoCapture(0);		//consider changing to plus get frame
 		capture.open(0);
 		if (capture.isOpened()) {
 			capture.set(CV_CAP_PROP_FPS, 30);
@@ -433,10 +433,27 @@ void MainWindow::scanButtonPress()
 	else {
 		controlWidget->scanButton->setText(tr("Start Scan"));
 		scanTimer->stop();
-		model->savePointCloud();
+		savePointCloud();
 		scanningStatus = false; 
 	}
 }
+
+void MainWindow::savePointCloud()
+{
+	QString filename = QFileDialog::getSaveFileName(this, "Save File", "", "PCD (*.pcd) ;; PLY (*.ply)");
+
+	if (filename.isEmpty()) return;
+	qDebug() << filename;
+	if (filename.endsWith(".pcd", Qt::CaseInsensitive)) {
+		qDebug() << "Save as pcd file.";
+		model->savePointCloudAsPCD(filename.toStdString());
+	}
+	else if (filename.endsWith(".ply", Qt::CaseInsensitive)) {
+		qDebug() << "Save as ply file.";
+		model->savePointCloudAsPLY(filename.toStdString());
+	}
+}
+
 
 void MainWindow::scan()
 {
@@ -488,12 +505,14 @@ void MainWindow::updateTracker()
 
 double MainWindow::getCameraPosition(int i, int j)		//x: (0,3), y:(1,3), z:(2,3)
 {
-	return camera2Tracker->GetElement(i, j);
+	//return camera2Tracker->GetElement(i, j);
+	return 1.1; 
 }
 
 double MainWindow::getToolPosition(int i, int j)
 {
-	return tool2Tracker->GetElement(i, j);
+	//return tool2Tracker->GetElement(i, j);
+	return 1.1;
 }
 
 void MainWindow::saveButtonPressed()
