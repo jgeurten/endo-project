@@ -63,7 +63,7 @@ cv::Mat Vision::subtractLaser(cv::Mat &laserOff, cv::Mat &laserOn)
 			}
 		}
 	}
-	
+	cv::imshow("lineImg", lineImg); 
 	return result;
 }
 
@@ -90,14 +90,17 @@ void Vision::framePointsToCloud(cv::Mat &laserOff, cv::Mat &laserOn,  int res, E
 	//EndoModel* model = new EndoModel(); 
 	cv::Mat laserLineImg = subtractLaser(laserOff, laserOn);
 
-	EndoPt camera , laserPt1, laserPt2, detectedPt;
+	EndoPt camera, laser, origin, normal, detectedPt;
 
 	camera.x = MainWindow::getCameraPosition(0, 3);
 	camera.y = MainWindow::getCameraPosition(1, 3);
 	camera.z = MainWindow::getCameraPosition(2, 3);
 
-	//get position of laser pointer() - need positions of fiducials positioned axial to the laser pointer
-	
+	laser.x = MainWindow::getToolPosition(0, 3); 
+	laser.y = MainWindow::getToolPosition(1, 3);
+	laser.z = MainWindow::getToolPosition(2, 3);
+
+	//relationship between the laser and plane origin and normal
 
 	for (int row = HORIZONTAL_OFFSET; row <  laserLineImg.rows - HORIZONTAL_OFFSET; row += res) {
 		for (int col = VERTICAL_OFFSET; col <  laserLineImg.cols - VERTICAL_OFFSET; col++) {
@@ -107,10 +110,10 @@ void Vision::framePointsToCloud(cv::Mat &laserOff, cv::Mat &laserOn,  int res, E
 				detectedPt.y = row; 
 
 				EndoLine camLine = lineFromPoints(camera, detectedPt); 
-				EndoLine laserLine = lineFromPoints(laserPt1, laserPt2);
-				EndoPt intersection = intersectionOfLines(camLine, laserLine);
+				
+				EndoPt intersection = solveIntersection(normal, origin, camLine);
 
-				if (intersection.x == NULL) {
+				if (intersection.x == 0.0) {
 					qDebug("No intersection found");
 					break;
 				}
