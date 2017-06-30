@@ -2,6 +2,7 @@
 #ifndef LINALG_H
 #define LINALG_H
 
+#include <math.h>
 
 // structures:
 
@@ -20,6 +21,14 @@ typedef struct EndoLine	//really composed of two 'points'
 
 } EndoLine;
 
+typedef struct EndoPlane
+{
+	double a; 
+	double b; 
+	double c; 
+	double d;
+
+} EndoPlane;
 
 
 static EndoPt MakePoint(double x, double y, double z)
@@ -33,6 +42,7 @@ static EndoPt MakePoint(double x, double y, double z)
 
 static EndoLine MakeLine(EndoPt a, EndoPt b)
 {
+	//l: a + t*b -> l:( x,y,z) + t(x,y,z)
 	EndoLine line;
 	line.a.x = a.x;
 	line.a.y = a.y;
@@ -44,6 +54,16 @@ static EndoLine MakeLine(EndoPt a, EndoPt b)
 	return line;
 }
 
+static EndoPlane MakePlane(EndoPt normal, EndoPt origin)
+{
+	//normal vector & origin point (can be any point on the plane)
+	EndoPlane plane; 
+	plane.a = normal.x; 
+	plane.b = normal.y; 
+	plane.c = normal.z; 
+	plane.d = -(normal.x*origin.x + normal.y*origin.y + normal.z*origin.z);
+	return plane; 
+}
 
 static EndoLine lineFromPoints(EndoPt p1, EndoPt p2)
 {
@@ -56,38 +76,53 @@ static EndoLine lineFromPoints(EndoPt p1, EndoPt p2)
 	return line;
 }
 
-EndoPt CrossProduct(EndoPt p1, EndoPt p2)
+double dot(EndoPt p1, EndoPt p2)
 {
-	EndoPt result;
-	result.x = p1.y*p2.z - (p1.z*p2.y);
-	result.y = p1.x*p2.z - (p2.x*p1.z);
-	result.z = p1.x*p2.y - (p2.x*p1.y);
-	return result;
+	return (p1.x*p2.x + p1.y*p2.y + p1.z*p2.z); 
 }
 
-EndoPt intersectionOfLines(EndoLine l1, EndoLine l2)
+EndoPt unitVector(EndoPt pt)
 {
-	double t;
-	EndoPt bcross, across, adelta, result;
-	bcross = CrossProduct(l1.b, l2.b);
-	if (bcross.x == 0 && bcross.y == 0 && bcross.z == 0)
-		return MakePoint(0.0, 0.0, 0.0);
+	EndoPt result; 
+	double length = sqrt(pt.x*pt.x + pt.y*pt.y + pt.z*pt.z); 
+	result.x = pt.x / length; 
+	result.y = pt.y / length;
+	result.z = pt.z / length;
+	return result; 
+}
 
-	adelta.x = l2.a.x - l1.a.x;
-	adelta.y = l2.a.y - l1.a.y;
-	adelta.z = l2.a.z - l1.a.z;
-						   
-	across = CrossProduct(adelta, l2.b);
+EndoPt solveIntersection(EndoPt normal, EndoPt origin, EndoLine camLine)
+{
+	 //laser plane normal vector, origin: point on laser plane, camline: parametric equation of the camera line
+	//solve for t in parametric equation --> POI 
 
-	//may have to be range .. unsure about precision of tracking
-	if (across.x / bcross.x != across.y / bcross.y || across.x / bcross.x != across.z / bcross.z)
-		return MakePoint(0.0, 0.0, 0.0);
+	EndoPt result; 
+	EndoPt norm = unitVector(normal); 
+	EndoPt unitCam = unitVector(camLine.b); 
+	double angle = dot(norm, unitCam); 
 
-	t = across.x / bcross.x;
-	result.x = l1.a.x + t*l1.b.x;
-	result.y = l1.a.y + t*l1.b.y;
-	result.z = l1.a.z + t*l1.b.z;
-	return result;
+	if (angle < 1e-6)	//line is parallel to plane
+	{
+		EndoPt diff = MakePoint(camLine.a.x - origin.x, camLine.a.y - origin.y, camLine.a.z - origin.z);
+ 		if (abs(dot(diff, norm)) < 1e-6)		//line lays on plane
+			result = origin;
+		else
+			result = MakePoint(0.0, 0.0, 0.0);
+	}
+
+	else   //line intersects plane --> single point
+	{
+		double t; 
+		EndoPlane laser = MakePlane(normal, origin);
+		t = -(laser.d + laser.a*camLine.a.x + laser.b*camLine.a.y + laser.c*camLine.a.z)/
+			(laser.a*camLine.b.x + laser.b*camLine.b.y + laser.c*camLine.b.z);
+
+		result.x = camLine.a.x + t*camLine.b.x; 
+		result.y = camLine.a.y + t*camLine.b.y;
+		result.z = camLine.a.z + t*camLine.b.z;
+	}
+
+	return result; 
 }
 
 #endif // !LINALG_H
