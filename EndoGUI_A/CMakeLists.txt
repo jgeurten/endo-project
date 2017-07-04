@@ -18,7 +18,7 @@ SET(CMAKE_AUTORCC ON)
 
 FIND_PACKAGE(OpenCV REQUIRED NO_MODULE)
 FIND_PACKAGE(PlusLib REQUIRED NO_MODULE)
-FIND_PACKAGE(PCL REQUIRED NO_MODULE)
+
 FIND_PACKAGE(vtk REQUIRED)
 INCLUDE(${VTK_USE_FILE})
 
@@ -50,7 +50,6 @@ ADD_EXECUTABLE(EndoScanner
   )
 
 target_include_directories(EndoScanner PUBLIC 
-  ${PCL_INCLUDE_DIRS}
   ${${PROJECT_NAME}_INCLUDE_DIRS}
   )
 TARGET_LINK_LIBRARIES(EndoScanner PUBLIC
@@ -60,11 +59,12 @@ TARGET_LINK_LIBRARIES(EndoScanner PUBLIC
   Qt5::Gui
   Qt5::MultimediaWidgets
   Qt5::Multimedia
+  
   ${OpenCV_LIBS}
-  ${PCL_LIBRARIES}
+  
+
   vtksys
   vtkglew
-  vtkRendering
   vtkPlusCalibration
   vtkPlusCommon
   vtkPlusDataCollection
@@ -73,5 +73,5 @@ TARGET_LINK_LIBRARIES(EndoScanner PUBLIC
   vtkPlusOpenIGTLink
   vtkPlusRendering
   vtkPlusServer
+
 )
-target_compile_definitions(EndoScanner PUBLIC ${PCL_DEFINITIONS})

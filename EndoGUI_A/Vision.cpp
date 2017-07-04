@@ -95,7 +95,7 @@ void Vision::framePointsToCloud(cv::Mat &laserOff, cv::Mat &laserOn,  int res, E
 	camera.x = MainWindow::getCameraPosition(0, 3);
 	camera.y = MainWindow::getCameraPosition(1, 3);
 	camera.z = MainWindow::getCameraPosition(2, 3);
-
+	
 	laser.x = MainWindow::getToolPosition(0, 3); 
 	laser.y = MainWindow::getToolPosition(1, 3);
 	laser.z = MainWindow::getToolPosition(2, 3);
@@ -106,6 +106,7 @@ void Vision::framePointsToCloud(cv::Mat &laserOff, cv::Mat &laserOn,  int res, E
 		for (int col = VERTICAL_OFFSET; col <  laserLineImg.cols - VERTICAL_OFFSET; col++) {
 			if (laserLineImg.at<uchar>(row, col) == 255) {
 
+				
 				detectedPt.x = col; 
 				detectedPt.y = row; 
 
@@ -120,7 +121,7 @@ void Vision::framePointsToCloud(cv::Mat &laserOff, cv::Mat &laserOn,  int res, E
 				else {
 					//point manipulation
 					EndoPt newPoint; 
-					model->addPointToPointCloud(newPoint);
+					//model->addPointToPointCloud(newPoint);
 				}
 			}
 		}
@@ -142,45 +143,5 @@ cv::Point2i Vision::getLaserPosition(vector<cv::Vec4i> lines)
 	middleOfLaser.y /= 2*i;
 	return middleOfLaser;
 }
-
-void Vision::cvPointsToCloud(cv::Mat &laserOff, cv::Mat &laserOn)
-{	/*
-	//Detect non-incident laser line. Reflection line
-
-	cv::Mat laserLine, bwLaserLine; 
-	cv::Point2i midLaser;
-	vector<cv::Vec4i> lines;
-	vector<cv::Point2i> reflectLaser;
-
-	laserLine = subtractLaser(laserOn, laserOff);
-	cv::cvtColor(laserLine, bwLaserLine, CV_RGB2GRAY);
-	lines = detectLaserLine(laserOn, laserOff);
-	midLaser = getLaserPosition(lines);
-	
-	int colBounds[2] = { midLaser.x - 40, midLaser.y + 40 };
-	int rowBounds[2] = { 0, 480 };
-	int found = 0;
-
-	for (int rowIndex = rowBounds[0]; rowIndex < rowBounds[1]; rowIndex++)
-	{
-		for (int LColIndex = 0, int RColIndex = laserOn.rows; LColIndex < colBounds[0] && RColIndex > colBounds[1];	LColIndex++, RColIndex--)
-		{
-			if (bwLaserLine.at<uchar>(LColIndex, rowIndex) > 0) {
-				reflectLaser[found].x = LColIndex;
-				reflectLaser[found].y = rowIndex;
-				found++;
-			}
-			if (bwLaserLine.at<uchar>(RColIndex, rowIndex) > 0) {
-				reflectLaser[found].x = RColIndex;
-				reflectLaser[found].y = rowIndex;
-				found++;
-			}
-				
-		}
-	}
-	EndoModel::addPointToPointCloud(reflectLaser);
-	*/
-}
-
 
 

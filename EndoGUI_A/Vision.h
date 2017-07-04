@@ -23,7 +23,6 @@ public:
 
 	static cv::Mat subtractLaser(cv::Mat &LaserOff, cv::Mat &LaserOn);
 	static vector<cv::Vec4i> detectLaserLine(cv::Mat &LaserOff, cv::Mat &LaserOn);
-	static void cvPointsToCloud(cv::Mat &laserOff, cv::Mat &laserOn);
 
 	static cv::Point2i getLaserPosition(vector<cv::Vec4i> lines);
 	static void framePointsToCloud(cv::Mat &laserOff, cv::Mat &laserOn, int res, EndoModel* model);

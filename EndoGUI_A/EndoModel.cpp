@@ -1,3 +1,4 @@
+/*
 //PCL includes
 #include <pcl/point_cloud.h>
 #include <pcl/kdtree/kdtree_flann.h>
@@ -11,11 +12,10 @@
 #include <pcl/io/vtk_io.h>
 #include <pcl/io/ply_io.h>
 
-
+*/
 //Local includes
 #include "EndoModel.h"
 #include "defines.h"
-#include "LinAlg.h"
 #include <MainWindow.h>
 
 //Qt includes
@@ -32,14 +32,14 @@ using namespace std;
 
 EndoModel::EndoModel()
 {
-	this->pointCloud = new pcl::PointCloud<pcl::PointXYZ>;
+	//this->pointCloud = new pcl::PointCloud<pcl::PointXYZ>;
 
 	ofstream myfile("./Data/Scan.csv");
 	myfile << "Cam X," << "Cam Y," << "Cam Z,"
 		<< "Tool X," << "Tool Y," << "Tool Z,"
 		<< "Laser X," << "Laser Y," << "Laser Z" << endl;
 }
-
+/*
 void EndoModel::convertPointCloudToSurfaceMesh()
 {
 
@@ -81,3 +81,4 @@ void EndoModel::saveData(EndoPt point)
 	myfile << point.x << "," << point.y << "," << point.z << endl; 
 
 }
+*/

@@ -78,6 +78,7 @@
 #include "PlusXMLUtils.h"
 
 
+
 //MSDN includes
 #include <Windows.h>
 #include <WinBase.h>
@@ -122,12 +123,14 @@ MainWindow::~MainWindow()
 
 void MainWindow::createMenus()
 {
+	fileMenu = menuBar()->addMenu(tr("&File"));
 	
 	exitAct = new QAction(tr("&Exit"), this);
 	exitAct->setShortcuts(QKeySequence::Quit);
 	exitAct->setStatusTip(tr("Exit application"));
 	connect(exitAct, SIGNAL(triggered()), this, SLOT(exit()));
 
+	
 	// File Menu
 	
 	fileMenu->addAction(exitAct);
@@ -291,16 +294,18 @@ void MainWindow::startTracker()
 			statusBar()->showMessage(tr("Unable to locate the channel"), 5000);
 			return; 
 		}
-
-		trackTimer->start(40); //minimum is 17 ms
+		if(!playing)
+			trackTimer->start(40); //minimum is 17 ms
 		trackerInit = true; 
+		controlWidget->trackerButton->setText(tr("Stop Tracking"));
 	}
 
 	else  //already initalized - unitialize...
 	{
 		trackTimer->stop();
-		controlWidget->trackerButton->setText(tr("Stop Tracking"));
-		statusBar()->showMessage(tr("Stopping Tracking"));
+		trackerInit = false; 
+		controlWidget->trackerButton->setText(tr("Start Tracking"));
+		statusBar()->showMessage(tr("Stopping Tracking"),1000);
 	}
 	
 }
@@ -327,6 +332,8 @@ void MainWindow::createVTKObject()
 	if (CreateDirectory(calibDir.c_str(), NULL) ||
 		ERROR_ALREADY_EXISTS != GetLastError())
 		std::cout << "calibration directory created." << std::endl;
+	
+	trackerDevice = NULL;
 
 	// Read configuration file
 	if (PlusXmlUtils::ReadDeviceSetConfigurationFromFile(configRootElement, configFile.c_str()) == PLUS_FAIL)
@@ -358,6 +365,8 @@ void MainWindow::camera_button_clicked()
 			framePd = 1000 / (int)capture.get(CV_CAP_PROP_FPS);
 			playing = true;
 			controlWidget->streamButton->setText(tr("Stop Stream"));
+			if (!trackerInit)
+				trackTimer->start(40);
 			
 		}
 		else
@@ -446,11 +455,11 @@ void MainWindow::savePointCloud()
 	qDebug() << filename;
 	if (filename.endsWith(".pcd", Qt::CaseInsensitive)) {
 		qDebug() << "Save as pcd file.";
-		model->savePointCloudAsPCD(filename.toStdString());
+		//model->savePointCloudAsPCD(filename.toStdString());
 	}
 	else if (filename.endsWith(".ply", Qt::CaseInsensitive)) {
 		qDebug() << "Save as ply file.";
-		model->savePointCloudAsPLY(filename.toStdString());
+		//model->savePointCloudAsPLY(filename.toStdString());
 	}
 }
 
@@ -482,11 +491,11 @@ void MainWindow::scan()
 
 void MainWindow::updateTracker()
 {	
+	if (playing)
+		update_image();
+
 	 if (trackerInit)
 	{
-		if (playing)
-			update_image();
-
 		bool isToolMatrixValid = false; 
 
 		if (repository->GetTransform(tool2TrackerName, tool2Tracker, &isToolMatrixValid) == PLUS_SUCCESS && isToolMatrixValid)
@@ -624,6 +633,11 @@ void MainWindow::connectMCU() {
 
 void MainWindow::camWebcam(bool checked)
 {
+	if (!trackerInit) {
+		statusBar()->showMessage(tr("Start Tracker First"), 5000); 
+		return; 
+	}
+
 	if (checked)
 	{
 		dataCollector->Stop();
@@ -663,7 +677,11 @@ void MainWindow::camWebcam(bool checked)
 
 void MainWindow::camEndocam(bool checked)
 {
-	
+	if (!trackerInit) {
+		statusBar()->showMessage(tr("Start Tracker First"), 5000);
+		return;
+	}
+
 	if (checked)
 	{
 		dataCollector->Stop();

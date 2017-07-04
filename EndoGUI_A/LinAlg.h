@@ -6,20 +6,20 @@
 
 // structures:
 
-typedef struct EndoPt
+struct EndoPt
 {
 	double x;
 	double y;
 	double z;
 
-} EndoPt;
+} point;
 
-typedef struct EndoLine	//really composed of two 'points'
+struct EndoLine	//really composed of two 'points'
 {
 	EndoPt a;
 	EndoPt b;
 
-} EndoLine;
+} line;
 
 typedef struct EndoPlane
 {
@@ -28,22 +28,22 @@ typedef struct EndoPlane
 	double c; 
 	double d;
 
-} EndoPlane;
+} plane;
 
 
 static EndoPt MakePoint(double x, double y, double z)
 {
-	EndoPt pt;
-	pt.x = x;
-	pt.y = y;
-	pt.z = z;
-	return pt;
+	EndoPt point; 
+	point.x = x;
+	point.y = y;
+	point.z = z;
+	return point;
 }
 
 static EndoLine MakeLine(EndoPt a, EndoPt b)
 {
 	//l: a + t*b -> l:( x,y,z) + t(x,y,z)
-	EndoLine line;
+	EndoLine line; 
 	line.a.x = a.x;
 	line.a.y = a.y;
 	line.a.z = a.z;

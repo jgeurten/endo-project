@@ -209,11 +209,6 @@ private:
 
 	void update_image();
 	void saveVideo();
-	void run();
-	void open();
-	void stop();
-	void exit();
-	void save();
 	void help();
 	void about();
 
