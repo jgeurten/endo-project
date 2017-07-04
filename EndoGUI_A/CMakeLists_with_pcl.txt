@@ -1,0 +1,124 @@
+PROJECT(EndoScanner)
+
+CMAKE_MINIMUM_REQUIRED(VERSION 3.7.2)
+
+IF(COMMAND CMAKE_POLICY)
+  CMAKE_POLICY(SET CMP0003 NEW)
+ENDIF()
+
+SET(${PROJECT_NAME}_INCLUDE_DIRS
+  ${CMAKE_CURRENT_SOURCE_DIR}
+  ${CMAKE_CURRENT_BINARY_DIR}
+  )
+
+FIND_PACKAGE(Qt5 REQUIRED COMPONENTS Widgets OpenGL Core Gui Multimedia MultimediaWidgets)
+SET(CMAKE_AUTOMOC ON)
+SET(CMAKE_AUTOUIC ON)
+SET(CMAKE_AUTORCC ON)
+
+FIND_PACKAGE(OpenCV REQUIRED NO_MODULE)
+FIND_PACKAGE(PlusLib REQUIRED NO_MODULE)
+FIND_PACKAGE(PCL REQUIRED NO_MODULE)
+FIND_PACKAGE(vtk REQUIRED)
+INCLUDE(${VTK_USE_FILE})
+
+file(GLOB EndoScannerArduinoFirmware_headers RELATIVE "EndoScannerArduinoFirmware" "*.h")
+file(GLOB EndoScannerArduinoFirmware_Sources RELATIVE "EndoScannerArduinoFirmware" "*.cpp")
+
+ADD_EXECUTABLE(EndoScanner
+  #Source files
+  main.cpp
+  MainWindow.cpp
+  Serial.cpp
+  Vision.cpp
+  qlightwidget.cpp
+  Controlwidget.cpp
+  EndoModel.cpp
+
+  ${EndoScannerArduinoFirmware_Sources}
+
+  #Header files
+  MainWindow.h
+  Serial.h
+  Vision.h
+  qlightwidget.h
+  Controlwidget.h
+  EndoModel.h
+  defines.h
+  LinAlg.h
+  ${EndoScannerArduinoFirmware_headers}
+  )
+
+target_include_directories(EndoScanner PUBLIC 
+  ${PCL_INCLUDE_DIRS}
+  ${${PROJECT_NAME}_INCLUDE_DIRS}
+  )
+TARGET_LINK_LIBRARIES(EndoScanner PUBLIC
+  Qt5::Widgets
+  Qt5::OpenGL
+  Qt5::Core
+  Qt5::Gui
+  Qt5::MultimediaWidgets
+  Qt5::Multimedia
+  vtkRenderingGL2PS${VTK_RENDERING_BACKEND}
+  ${OpenCV_LIBS}
+  ${BOOST_LIBRARIES}
+  ${FLANN_LIBRARIES}
+
+  ${PCL_COMMON_LIBRARY_DEBUG}
+  ${PCL_FEATURES_LIBRARY_DEBUG}
+  ${PCL_FILTERS_LIBRARY_DEBUG}
+  ${PCL_IO_LIBRARY_DEBUG}
+  ${PCL_KDTREE_LIBRARY_DEBUG}
+  ${PCL_KEYPOINTS_LIBRARY_DEBUG}
+  ${PCL_ML_LIBRARY_DEBUG}
+  ${PCL_OCTREE_LIBRARY_DEBUG}
+
+  ${PCL_OUTOFCORE_LIBRARY_DEBUG}
+  ${PCL_PEOPLE_LIBRARY_DEBUG}
+  ${PCL_RECOGNITION_LIBRARY_DEBUG}
+  ${PCL_REGISTRATION_LIBRARY_DEBUG}
+  ${PCL_SAMPLE_CONSENSUS_LIBRARY_DEBUG}
+  ${PCL_SEARCH_LIBRARY_DEBUG}
+  ${PCL_SEGMENTATION_LIBRARY_DEBUG}
+  ${PCL_STEREO_LIBRARY_DEBUG}
+  ${PCL_SURFACE_LIBRARY_DEBUG}
+  ${PCL_TRACKING_LIBRARY_DEBUG}
+  ${PCL_VISUALIZATION_LIBRARY_DEBUG}
+
+#  pcl_common_debug
+#  pcl_features_debug
+#  pcl_filters_debug
+#  pcl_io_debug
+#  pcl_io_ply_debug
+#  pcl_kdtree_debug
+
+#  pcl_keypoints_debug
+#  pcl_ml_debug
+#  pcl_octree_debug
+#  pcl_outofcore_debug
+#  pcl_people_debug
+#  pcl_registration_debug
+#  pcl_recognition_debug
+#  pcl_sample_consensus_debug
+#  pcl_search_debug
+#  pcl_segmentation_debug
+#  pcl_stereo_debug
+#  pcl_surface_debug
+#  pcl_tracking_debug
+#  pcl_visualization_debug
+#  ${PCL_LIBRARIES}
+
+  vtksys
+  vtkglew
+  vtkPlusCalibration
+  vtkPlusCommon
+  vtkPlusDataCollection
+  vtkPlusHaptics
+  vtkPlusImageProcessing
+  vtkPlusOpenIGTLink
+  vtkPlusRendering
+  vtkPlusServer
+  
+)
+target_compile_definitions(EndoScanner PUBLIC ${PCL_DEFINITIONS})
