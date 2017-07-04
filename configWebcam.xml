@@ -8,19 +8,17 @@
 	<Device
       Id="TrackerDevice"
       Type="PolarisTracker"
-      SerialPort="7"
+      SerialPort="4"
       BaudRate="115200"
 	  AcquisitionRate="60"
       ToolReferenceFrame="Tracker" >
       <DataSources>
-		<DataSource Type="Tool" Id="Probe" RomFile="NDIToolDefinitions/Stylus_Update7.rom"  />
-		<DataSource Type="Tool" Id="Model" RomFile="NDIToolDefinitions/8700302.rom" />
-		<DataSource Type="Tool" Id="Camera" RomFile="NDIToolDefinitions/Camera.rom"  />
+	  
+		<DataSource Type="Tool" Id="Camera" RomFile="ToolDefinitions/Camera.rom"  />
       </DataSources>
       <OutputChannels>
         <OutputChannel Id="TrackerStream" >
-		  <DataSource Id="Probe"/>
-		  <DataSource Id="Model" />
+			
 		  <DataSource Id="Camera"/>
         </OutputChannel>
       </OutputChannels>
@@ -30,7 +28,7 @@
       Id="VideoDevice" 
       Type="MmfVideo" 
       FrameSize="640 480"
-      VideoFormat="RGB24"
+      VideoFormat="YUY2"
       CaptureDeviceId="0" >
       <DataSources>
         <DataSource Type="Video" Id="Video" PortUsImageOrientation="MF" ImageType="RGB_COLOR"  />
@@ -64,12 +62,35 @@
   </DataCollection>
 
   <CoordinateDefinitions>
-    <Transform From="Image" To="Reference"
-      Matrix="
-        0.2 0.0 0.0 0.0
-        0.0 0.2 0.0 0.0
-        0.0 0.0 0.2 0.0        
-        0 0 0 1" />
+     
+	  
+    
+	  
+	<Transform From="Camera" To="ImagePlane"
+		Matrix="
+		-0.99981   -0.0148    -0.01251   -39.8957
+		0.001761   0.573427   -0.81925   -19.3914
+		0.019293   -0.81912   -0.57329   9.935949
+		0 0 0 1"
+      Error="0.02" Date="12102016_2318" />
+	
+	<Transform From="Laser" To="PlaneOrigin"
+		Matrix="
+		1.0000		0 		0 		33.3550 
+		0          1.0000  0 		73.8980 
+		0          0 	 	1.0000	-43.4400 
+		0          0 	 	0.0000 	 1.0000"
+		Error="1.83" Date="20170630T2050" />
+		
+		
+		<Transform From="Laser" To="PlaneNormal"
+		Matrix="
+		1.0000		0 		0 		-0.9800
+		0          1.0000  0 		-0.1985
+		0          0 	 	1.0000	-0.0155 
+		0          0 	 	0.0000 	 0"
+		Error="1.83" Date="20170630T2050" />
+	
   </CoordinateDefinitions>
   
   <PlusOpenIGTLinkServer 
