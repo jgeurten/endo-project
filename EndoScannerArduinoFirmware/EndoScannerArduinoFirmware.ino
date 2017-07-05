@@ -18,7 +18,7 @@ void loop()
 {
   if (Serial.available() > 0)
   {
-    delay(100);
+    delay(10);     //remove and test to see if can speed up delay in mainwindow
     for (int numBytes = 0; numBytes < MAXBYTES; numBytes++) {
       serialMsg[numBytes] = Serial.read();
       serialMsg[numBytes + 1] = '\0';    //serialMsg[1] = '\0'
