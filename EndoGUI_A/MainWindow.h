@@ -132,7 +132,7 @@ private:
 
 	//Plus transforms
 	vtkSmartPointer<vtkMatrix4x4>					camera2Image = vtkSmartPointer<vtkMatrix4x4>::New();
-	
+	vtkSmartPointer<vtkMatrix4x4>					laser2Tracker = vtkSmartPointer<vtkMatrix4x4>::New();
 	vtkSmartPointer<vtkMatrix4x4>					camera2Tracker = vtkSmartPointer<vtkMatrix4x4>::New();
 
 	// Plus Transform Names
@@ -161,6 +161,8 @@ private:
 	PlusTrackedFrame								leftMixerFrame;
 	PlusTrackedFrame								rightMixerFrame;
 	PlusTrackedFrame								mixerFrame;
+	PlusTrackedFrame								trackedFrame;
+
 
 	vtkPlusNDITracker								*ndiTracker;
 	vtkPlusMmfVideoSource							*webcamVideo;
@@ -221,8 +223,8 @@ private:
 	double getCameraPosition(int i, int j);
 	double getLaserPosition(int i, int j);
 
-public:
-	vtkSmartPointer<vtkMatrix4x4>					laser2Tracker = vtkSmartPointer<vtkMatrix4x4>::New();
+
+	
 
 protected:
 	

@@ -6,9 +6,7 @@
 #include "defines.h"
 #include <EndoModel.h>
 #include <LinAlg.h>
-#include "C:\Users\jgeurten\Documents\endo-project\endo-project\EndoScannerArduinoFirmware\Laser.h"
-#include "C:\Users\jgeurten\Documents\endo-project\endo-project\EndoScannerArduinoFirmware\configuration.h"
-#include "C:\Users\jgeurten\Documents\endo-project\endo-project\EndoScannerArduinoFirmware\GCodeInterpreter.h"
+
 
 //OpenCv includes
 #include <opencv2/core/core.hpp>
@@ -356,7 +354,7 @@ void MainWindow::createVTKObject()
 }
 
 void MainWindow::camera_button_clicked()
-{
+{ /*
 	if (!playing) {
 		capture = cv::VideoCapture(0);		//consider changing to plus get frame
 		capture.open(0);
@@ -382,6 +380,13 @@ void MainWindow::camera_button_clicked()
 		playing = false;
 		trackTimer->stop();
 	}
+	*/
+	if (!playing)
+	{
+
+		if (!trackerInit)
+			trackTimer->start(40);
+	}
 }
 
 
@@ -389,6 +394,7 @@ void MainWindow::camera_button_clicked()
 void MainWindow::update_image()
 {
 
+	/*
   	if (capture.isOpened())
 	{
 		
@@ -428,6 +434,7 @@ void MainWindow::update_image()
 	}
 	else
 		statusBar()->showMessage(tr("Unable to Detect Camera"), 5000);
+		*/
 }
 
 void MainWindow::scanButtonPress()
@@ -510,6 +517,9 @@ void MainWindow::updateTracker()
 
 	 if (trackerInit)
 	{
+		trackerChannel->GetTrackedFrame(trackedFrame);
+		repository->SetTransforms(trackedFrame);
+
 		bool isToolMatrixValid = false; 
 
 		if (repository->GetTransform(laser2TrackerName, laser2Tracker, &isToolMatrixValid) == PLUS_SUCCESS && isToolMatrixValid)
