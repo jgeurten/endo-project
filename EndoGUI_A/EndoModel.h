@@ -3,7 +3,7 @@
 #define ENDOMODEL_H
 
 #include <Vision.h>
-// #include <LinAlg.h>
+#include <LinAlg.h>
 /*
 //PCL includes
 #include <pcl/point_cloud.h>
@@ -33,10 +33,11 @@ public:
 	//void savePointCloudAsPLY(string &filename); 
 	//void savePointCloudAsPCD(string &filename);
 	//void addPointToPointCloud(EndoPt point);
-	//void saveData(EndoPt point);
+	//void saveData(linalg::EndoPt point);
 
 	ofstream myfile;
 	//pcl::PointCloud<pcl::PointXYZ> *pointCloud;
+	int test; 
 };
 
 #endif // !ENDOMODEL_H

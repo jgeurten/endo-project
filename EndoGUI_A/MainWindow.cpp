@@ -1,11 +1,11 @@
 //Local includes
 #include "MainWindow.h"
 #include "Serial.h"
-#include "Vision.h"
 #include "ControlWidget.h"
 #include "qlightwidget.h"
 #include "defines.h"
 #include <EndoModel.h>
+#include <LinAlg.h>
 #include "C:\Users\jgeurten\Documents\endo-project\endo-project\EndoScannerArduinoFirmware\Laser.h"
 #include "C:\Users\jgeurten\Documents\endo-project\endo-project\EndoScannerArduinoFirmware\configuration.h"
 #include "C:\Users\jgeurten\Documents\endo-project\endo-project\EndoScannerArduinoFirmware\GCodeInterpreter.h"
@@ -77,17 +77,16 @@
 #include "PlusMath.h"
 #include "PlusXMLUtils.h"
 
-
-
 //MSDN includes
 #include <Windows.h>
 #include <WinBase.h>
 #include <synchapi.h>
 #include <string>
+#include <math.h>
+#include <iostream>
+#include <fstream>
 
 using namespace std;
-
-//constructor
 
 class ControlWidget;
 
@@ -101,7 +100,7 @@ MainWindow::MainWindow(QWidget *parent)
 	mcuConnected = false;
 	laserOn = false;
 	trackerInit = false;
-	scanningStatus = false; 
+	isScanning = false; 
 	//cv::VideoCapture capture = new cv::VideoCapture();
 
 	createMenus();
@@ -210,6 +209,7 @@ void MainWindow::createControlDock()
 
 void MainWindow::startTracker()
 {
+	controlWidget->trackerButton->setChecked(false);
 	if (!trackerInit)
 	{
 		if (dataCollector->GetDevice(trackerDevice, "TrackerDevice") != PLUS_SUCCESS) {
@@ -298,6 +298,7 @@ void MainWindow::startTracker()
 			trackTimer->start(40); //minimum is 17 ms
 		trackerInit = true; 
 		controlWidget->trackerButton->setText(tr("Stop Tracking"));
+		controlWidget->trackerButton->setChecked(true);
 	}
 
 	else  //already initalized - unitialize...
@@ -305,6 +306,7 @@ void MainWindow::startTracker()
 		trackTimer->stop();
 		trackerInit = false; 
 		controlWidget->trackerButton->setText(tr("Start Tracking"));
+		controlWidget->trackerButton->setChecked(false);
 		statusBar()->showMessage(tr("Stopping Tracking"),1000);
 	}
 	
@@ -313,6 +315,7 @@ void MainWindow::startTracker()
 void MainWindow::createVTKObject()
 {
 	//not sure this is used :
+
 	//intrinsicsFile = "./config/calibration.xml";
 
 	if (webcam->isChecked())
@@ -390,8 +393,8 @@ void MainWindow::update_image()
 	{
 		
 		cv::namedWindow("Control", CV_WINDOW_NORMAL);
-		cvCreateTrackbar("Brightness", "Control", &brightness, 40);
-		cvCreateTrackbar("Contrast", "Control", &contrast, 40); 
+		cvCreateTrackbar("Brightness", "Control", &brightness, 100);
+		cvCreateTrackbar("Contrast", "Control", &contrast, 100); 
 		capture.set(CV_CAP_PROP_CONTRAST, (double)contrast);
 		capture.set(CV_CAP_PROP_BRIGHTNESS, (double)brightness);
 		
@@ -429,21 +432,27 @@ void MainWindow::update_image()
 
 void MainWindow::scanButtonPress()
 {
-	if (!scanningStatus) {
+	if (!isScanning) {
 		scanTimer = new QTimer(this);
 		connect(scanTimer, SIGNAL(timeout()), this, SLOT(scan()));
 		controlWidget->scanButton->setText(tr("Stop Scan"));
+		controlWidget->scanButton->setChecked(true);
 		scanTimer->start(30);
-		scanningStatus = true; 
-		visionIns = new Vision(); 
-		model = new EndoModel();
+		isScanning = true; 
+		
+		//model = new EndoModel();
+		ofstream myfile("./Data/Scan.csv");
+		myfile << "Cam X," << "Cam Y," << "Cam Z,"
+			<< "Tool X," << "Tool Y," << "Tool Z,"
+			<< "Laser X," << "Laser Y," << "Laser Z" << endl;
 		
 	}
 	else {
 		controlWidget->scanButton->setText(tr("Start Scan"));
+		controlWidget->scanButton->setChecked(false);
 		scanTimer->stop();
 		savePointCloud();
-		scanningStatus = false; 
+		isScanning = false; 
 	}
 }
 
@@ -455,6 +464,7 @@ void MainWindow::savePointCloud()
 	qDebug() << filename;
 	if (filename.endsWith(".pcd", Qt::CaseInsensitive)) {
 		qDebug() << "Save as pcd file.";
+		myfile.close();
 		//model->savePointCloudAsPCD(filename.toStdString());
 	}
 	else if (filename.endsWith(".ply", Qt::CaseInsensitive)) {
@@ -471,21 +481,25 @@ void MainWindow::scan()
 		toggleLaser();
 		togglecount++;
 	}
-	else if (scancount == 5) {			//effectively delayed 120ms
+
+	else if (scancount == 7) {			//effectively delayed 150ms
+
 		if (togglecount % 2 == 0)
 			capture >> laserOnImg;
+
 		else 
 			capture >> laserOffImg;
 				
 		scancount = 0;
 	}
+
 	if (laserOnImg.empty() || laserOffImg.empty())	//only true for toggle count = 1
 		return;
 
-	if (togglecount % 2 == 0)	//have both laser on and off successive images
-	{
-		visionIns->framePointsToCloud(laserOffImg, laserOnImg, 1, model);
-	
+	if (togglecount % 2 == 0) {	//have both laser on and off successive images
+		framePointsToCloud(laserOffImg, laserOnImg, 1, model);
+		cv::imshow("Laser On", laserOnImg);
+		cv::imshow("Laser Off", laserOffImg);
 	}
 }
 
@@ -498,7 +512,7 @@ void MainWindow::updateTracker()
 	{
 		bool isToolMatrixValid = false; 
 
-		if (repository->GetTransform(tool2TrackerName, tool2Tracker, &isToolMatrixValid) == PLUS_SUCCESS && isToolMatrixValid)
+		if (repository->GetTransform(laser2TrackerName, laser2Tracker, &isToolMatrixValid) == PLUS_SUCCESS && isToolMatrixValid)
 			controlWidget->lightWidgets[1]->setGreen();
 		else
 			controlWidget->lightWidgets[1]->setRed(); 
@@ -514,14 +528,12 @@ void MainWindow::updateTracker()
 
 double MainWindow::getCameraPosition(int i, int j)		//x: (0,3), y:(1,3), z:(2,3)
 {
-	//return camera2Tracker->GetElement(i, j);
-	return 1.1; 
+	return camera2Tracker->GetElement(i, j);
 }
 
-double MainWindow::getToolPosition(int i, int j)
+double MainWindow::getLaserPosition(int i, int j)
 {
-	//return tool2Tracker->GetElement(i, j);
-	return 1.1;
+	return laser2Tracker->GetElement(i, j);
 }
 
 void MainWindow::saveButtonPressed()
@@ -606,7 +618,8 @@ QImage MainWindow::mat_to_qimage(cv::Mat laserOffImg, QImage::Format format)
 
 //get serial com port object
 void MainWindow::connectMCU() {
-
+	
+	controlWidget->mcuButton->setChecked(false);
 	if (!mcuConnected) {
 		bool okay;
 		int portnumber = -1;
@@ -617,6 +630,7 @@ void MainWindow::connectMCU() {
 
 		if (comPort->isConnected()) {
 			controlWidget->mcuButton->setText(tr("Disconnect MCU"));
+			controlWidget->mcuButton->setChecked(true);
 			statusBar()->showMessage(tr("MCU Connected"), 2000);
 			mcuConnected = true;
 		}
@@ -699,11 +713,11 @@ void MainWindow::camEndocam(bool checked)
 
 		bool isMatrixValid(false);
 		repository->SetTransforms(mixerFrame);
+
 		if (repository->GetTransform(PlusTransformName("Endo", "Tracker"), camera2Tracker, &isMatrixValid) == PLUS_SUCCESS && isMatrixValid)
-		{
-			statusBar()->showMessage(tr("Endoscope now being used & tracked"), 5000);
-		}
+			statusBar()->showMessage(tr("Endoscope now being used & tracked"), 5000);	
 	}
+
 	else
 	{
 		dataCollector->Stop();
@@ -717,6 +731,111 @@ void MainWindow::camEndocam(bool checked)
 	}	
 }
 
+cv::Mat MainWindow::subtractLaser(cv::Mat &laserOff, cv::Mat &laserOn)
+{
+	//take in image with and without laser ON and return subtracted cv mat image
+	cv::Mat bwLaserOn, bwLaserOff, subImg, subImgBW, threshImg, result;
+	cv::Mat lineImg(480, 640, CV_8U, cv::Scalar(0));	//fill with 0's for black and white img 
+
+	cv::subtract(laserOn, laserOff, subImg);
+	cv::cvtColor(subImg, subImgBW, CV_RGB2GRAY);
+	//cv::cvtColor(laserOn, bwLaserOn, CV_RGB2GRAY);
+	//cv::subtract(bwLaserOn, bwLaserOff, subImgBW);
+	cv::imshow("subimbw", subImg);
+
+	cv::threshold(subImgBW, threshImg, 10, 255, CV_THRESH_TOZERO);
+	cv::imshow("thres", threshImg);
+	cv::blur(threshImg, threshImg, cv::Size(5, 5));
+	cv::imshow("BLUR", threshImg);
+
+	for (int rowN = 0; rowN < laserOff.rows; rowN++)
+	{
+		int count = 0;
+		int avgCol = 0;
+		int columns[640];
+		for (int colN = 0; colN < laserOff.cols; colN++)
+		{
+			if (threshImg.at<uchar>(rowN, colN) > 5)				//using diff img. Clear and thin line
+			{
+				columns[count] = colN;
+				count++;
+			}
+		}
+
+		for (int index = 0; index < count - 2; index++)
+		{
+			if (columns[index + 2] - columns[index] < 5) {	//if > 5 away, new line or noise
+				int middleCol = round((columns[index + 1] + columns[index]) / 2);
+				lineImg.at<uchar>(rowN, middleCol) = 255;
+			}
+		}
+	}
+	cv::imshow("lineImg", lineImg);
+	return result;
+}
+
+vector<cv::Vec4i> MainWindow::detectLaserLine(cv::Mat &laserOff, cv::Mat &laserOn)
+{
+	cv::Mat laserLine = subtractLaser(laserOff, laserOn);
+
+	vector<cv::Vec4i> lines;
+	cv::Mat laserLineBW(laserOff.rows, laserOff.cols, CV_8U, cv::Scalar(0));
+	cv::cvtColor(laserLine, laserLineBW, CV_RGB2GRAY);
+
+	cv::HoughLinesP(laserLineBW, lines, 1, CV_PI / 180, 20, 50, 10);
+
+	if (lines.size() == 0) {	//lines not detected
+		vector<cv::Vec4i> nullVec(1, 0);
+		return nullVec;
+	}
+	return lines;
+}
+
+
+void MainWindow::framePointsToCloud(cv::Mat &laserOff, cv::Mat &laserOn, int res, EndoModel* model)
+{
+	//EndoModel* model = new EndoModel(); 
+	cv::Mat laserLineImg = subtractLaser(laserOff, laserOn);
+
+	linalg::EndoPt camera, laser, origin, normal, detectedPt;
+
+	camera.x = getCameraPosition(0, 3);
+	camera.y = getCameraPosition(1, 3);
+	camera.z = getCameraPosition(2, 3);
+
+	laser.x = getLaserPosition(0, 3);
+	laser.y = getLaserPosition(1, 3);
+	laser.z = getLaserPosition(2, 3);
+
+	//relationship between the laser and plane origin and normal
+
+	for (int row = HORIZONTAL_OFFSET; row < laserLineImg.rows - HORIZONTAL_OFFSET; row += res) {
+		for (int col = VERTICAL_OFFSET; col < laserLineImg.cols - VERTICAL_OFFSET; col++) {
+			if (laserLineImg.at<uchar>(row, col) == 255) {
+
+
+				detectedPt.x = col;
+				detectedPt.y = row;
+
+				linalg::EndoLine camLine = linalg::lineFromPoints(camera, detectedPt);
+
+				linalg::EndoPt intersection = linalg::solveIntersection(normal, origin, camLine);
+
+				if (intersection.x == 0.0) {
+					qDebug("No intersection found");
+					break;
+				}
+				else {
+					//point manipulation
+					linalg::EndoPt newPoint;
+					//model->addPointToPointCloud(newPoint);
+					saveData(intersection);
+				}
+			}
+		}
+	}
+
+}
 
 void MainWindow::help()
 {
@@ -733,4 +852,15 @@ void MainWindow::about()
 		tr("This is a GUI to control the endoscope scanner \n\n"
 			"Developed by: \t\t"
 			"Jordan Geurten"));
+}
+
+void MainWindow::saveData(linalg::EndoPt point)
+{
+	for (int i = 0; i < 3; i++)
+		myfile << MainWindow::getCameraPosition(i, 3) << ",";
+
+	for (int i = 0; i < 3; i++)
+		myfile << MainWindow::getLaserPosition(i, 3) << ",";
+
+	myfile << point.x << "," << point.y << "," << point.z << endl;
 }

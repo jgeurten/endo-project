@@ -30,7 +30,6 @@ ADD_EXECUTABLE(EndoScanner
   main.cpp
   MainWindow.cpp
   Serial.cpp
-  Vision.cpp
   qlightwidget.cpp
   Controlwidget.cpp
   EndoModel.cpp
@@ -40,7 +39,6 @@ ADD_EXECUTABLE(EndoScanner
   #Header files
   MainWindow.h
   Serial.h
-  Vision.h
   qlightwidget.h
   Controlwidget.h
   EndoModel.h

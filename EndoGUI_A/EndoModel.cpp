@@ -33,7 +33,7 @@ using namespace std;
 EndoModel::EndoModel()
 {
 	//this->pointCloud = new pcl::PointCloud<pcl::PointXYZ>;
-
+	this->test = 3;
 	ofstream myfile("./Data/Scan.csv");
 	myfile << "Cam X," << "Cam Y," << "Cam Z,"
 		<< "Tool X," << "Tool Y," << "Tool Z,"
@@ -52,11 +52,7 @@ void EndoModel::savePointCloudAsPLY(string &filename)
 
 }
 
-void EndoModel::savePointCloudAsPCD(string &filename)
-{
-	if (pointCloud->size() == 0) return;
-	pcl::io::savePCDFileASCII(filename, *pointCloud);
-}
+
 
 void EndoModel::addPointToPointCloud(EndoPt point)
 {
@@ -70,13 +66,21 @@ void EndoModel::addPointToPointCloud(EndoPt point)
 	this->saveData(point);
 }
 
-void EndoModel::saveData(EndoPt point)
+
+void EndoModel::savePointCloudAsPCD(string &filename)
+{
+	//if (pointCloud->size() == 0) return;
+	//pcl::io::savePCDFileASCII(filename, *pointCloud);
+	myfile.close(); 
+}
+
+void EndoModel::saveData(linalg::EndoPt point)
 {
 	for (int i = 0; i < 3; i++)
 		myfile << MainWindow::getCameraPosition(i, 3) << ",";
 
 	for (int i = 0; i < 3; i++)
-		myfile << MainWindow::getToolPosition(i, 3) << ",";
+		myfile << MainWindow::getLaserPosition(i, 3) << ",";
 
 	myfile << point.x << "," << point.y << "," << point.z << endl; 
 

@@ -4,9 +4,10 @@
 
 //Local includes
 #include "Serial.h"
-#include "Vision.h"
 #include "qlightwidget.h"
 #include "ControlWidget.h"
+#include "LinAlg.h"
+#include "EndoModel.h"
 
 //QT includes
 #include <qmainwindow.h>
@@ -116,7 +117,6 @@ private:
 	QThread			*streamThread; 
 
 	EndoModel		*model; 
-	Vision			*visionIns; 
 	
 
 	// Plus members
@@ -137,7 +137,7 @@ private:
 
 	// Plus Transform Names
 	PlusTransformName								camera2TrackerName = PlusTransformName("Camera", "Tracker");
-	PlusTransformName								tool2TrackerName = PlusTransformName("Tool", "Tracker");
+	PlusTransformName								laser2TrackerName = PlusTransformName("Laser", "Tracker");
 	PlusTransformName								camera2ImageName = PlusTransformName("Camera", "ImagePlane");
 
 	// Mixers
@@ -170,7 +170,7 @@ private:
 	QImage mat_to_qimage(cv::Mat frame, QImage::Format format);
 
 	int					framePd;	// period of frame rate
-	bool				isReadyToSave, isSaving, playing, mcuConnected, laserOn, trackerInit, scanningStatus;
+	bool				isReadyToSave, isSaving, playing, mcuConnected, laserOn, trackerInit, isScanning;
 
 	vector<cv::Vec4i>	lines;
 	cv::Point			point1, point2;
@@ -191,6 +191,7 @@ private:
 	int					togglecount = 0;
 	int					brightness = 6;
 	int					contrast = 18;
+	ofstream			myfile; 
 
 	private slots:
 
@@ -207,18 +208,21 @@ private:
 	void updateTracker(); 
 	void savePointCloud(); 
 
+	void saveData(linalg::EndoPt point);
 	void update_image();
 	void saveVideo();
 	void help();
 	void about();
+	void framePointsToCloud(cv::Mat &laserOff, cv::Mat &laserOn, int res, EndoModel* model);
+	cv::Mat subtractLaser(cv::Mat &laserOff, cv::Mat &laserOn);
+	vector<cv::Vec4i> detectLaserLine(cv::Mat &laserOff, cv::Mat &laserOn);
 
-public slots:
-
-	static double getCameraPosition(int i, int j);
-	static double getToolPosition(int i, int j);
+	public:
+	double getCameraPosition(int i, int j);
+	double getLaserPosition(int i, int j);
 
 public:
-	vtkSmartPointer<vtkMatrix4x4>					tool2Tracker = vtkSmartPointer<vtkMatrix4x4>::New();
+	vtkSmartPointer<vtkMatrix4x4>					laser2Tracker = vtkSmartPointer<vtkMatrix4x4>::New();
 
 protected:
 	
