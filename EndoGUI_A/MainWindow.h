@@ -134,11 +134,19 @@ private:
 	vtkSmartPointer<vtkMatrix4x4>					camera2Image = vtkSmartPointer<vtkMatrix4x4>::New();
 	vtkSmartPointer<vtkMatrix4x4>					laser2Tracker = vtkSmartPointer<vtkMatrix4x4>::New();
 	vtkSmartPointer<vtkMatrix4x4>					camera2Tracker = vtkSmartPointer<vtkMatrix4x4>::New();
+	vtkSmartPointer<vtkMatrix4x4>					normal2Tracker = vtkSmartPointer<vtkMatrix4x4>::New();
+	vtkSmartPointer<vtkMatrix4x4>					origin2Tracker = vtkSmartPointer<vtkMatrix4x4>::New();
+	vtkSmartPointer<vtkMatrix4x4>					imagePlane2Tracker = vtkSmartPointer<vtkMatrix4x4>::New();
+
 
 	// Plus Transform Names
 	PlusTransformName								camera2TrackerName = PlusTransformName("Camera", "Tracker");
 	PlusTransformName								laser2TrackerName = PlusTransformName("Laser", "Tracker");
 	PlusTransformName								camera2ImageName = PlusTransformName("Camera", "ImagePlane");
+	PlusTransformName								normal2TrackerName = PlusTransformName("PlaneNormal", "Tracker");
+	PlusTransformName								origin2TrackerName = PlusTransformName("Laser", "PlaneOrigin");
+	PlusTransformName								normal2LaserName = PlusTransformName("PlaneNormal", "Laser");
+	PlusTransformName								imagePlane2TrackerName = PlusTransformName("ImagePlane", "Tracker"); 
 
 	// Mixers
 	vtkPlusDevice									*mixerDevice;
@@ -172,7 +180,7 @@ private:
 	QImage mat_to_qimage(cv::Mat frame, QImage::Format format);
 
 	int					framePd;	// period of frame rate
-	bool				isReadyToSave, isSaving, playing, mcuConnected, laserOn, trackerInit, isScanning;
+	bool				isReadyToSave, isSaving, playing, mcuConnected, laserOn, trackerInit, isScanning, cameraSeen, laserSeen;
 
 	vector<cv::Vec4i>	lines;
 	cv::Point			point1, point2;
@@ -195,6 +203,9 @@ private:
 	int					contrast = 18;
 	ofstream			myfile; 
 
+	linalg::EndoPt camera, normal, laser, origin; 
+
+
 	private slots:
 
 	void toggleLaser();
@@ -215,13 +226,16 @@ private:
 	void saveVideo();
 	void help();
 	void about();
-	void framePointsToCloud(cv::Mat &laserOff, cv::Mat &laserOn, int res, EndoModel* model);
+	void framePointsToCloud(cv::Mat &laserOff, cv::Mat &laserOn, int res);//, EndoModel* model);
 	cv::Mat subtractLaser(cv::Mat &laserOff, cv::Mat &laserOn);
 	vector<cv::Vec4i> detectLaserLine(cv::Mat &laserOff, cv::Mat &laserOn);
+	bool getTransforms();
 
 	public:
-	double getCameraPosition(int i, int j);
-	double getLaserPosition(int i, int j);
+	void getCameraPosition();
+	void getLaserPosition();
+	void getNormalPosition(); 
+	void getOriginPosition(); 
 
 
 	

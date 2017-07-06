@@ -99,6 +99,8 @@ MainWindow::MainWindow(QWidget *parent)
 	laserOn = false;
 	trackerInit = false;
 	isScanning = false; 
+	laserSeen = false;
+	cameraSeen = false;
 	//cv::VideoCapture capture = new cv::VideoCapture();
 
 	createMenus();
@@ -292,6 +294,8 @@ void MainWindow::startTracker()
 			statusBar()->showMessage(tr("Unable to locate the channel"), 5000);
 			return; 
 		}
+
+
 		if(!playing)
 			trackTimer->start(40); //minimum is 17 ms
 		trackerInit = true; 
@@ -305,7 +309,9 @@ void MainWindow::startTracker()
 		trackerInit = false; 
 		controlWidget->trackerButton->setText(tr("Start Tracking"));
 		controlWidget->trackerButton->setChecked(false);
-		statusBar()->showMessage(tr("Stopping Tracking"),1000);
+		statusBar()->showMessage(tr("Stopping Tracking"), 2000);
+		controlWidget->lightWidgets[0]->setBlue();
+		controlWidget->lightWidgets[1]->setBlue();
 	}
 	
 }
@@ -354,7 +360,7 @@ void MainWindow::createVTKObject()
 }
 
 void MainWindow::camera_button_clicked()
-{ /*
+{ 
 	if (!playing) {
 		capture = cv::VideoCapture(0);		//consider changing to plus get frame
 		capture.open(0);
@@ -380,7 +386,7 @@ void MainWindow::camera_button_clicked()
 		playing = false;
 		trackTimer->stop();
 	}
-	*/
+	
 	if (!playing)
 	{
 
@@ -394,7 +400,7 @@ void MainWindow::camera_button_clicked()
 void MainWindow::update_image()
 {
 
-	/*
+	
   	if (capture.isOpened())
 	{
 		
@@ -434,7 +440,7 @@ void MainWindow::update_image()
 	}
 	else
 		statusBar()->showMessage(tr("Unable to Detect Camera"), 5000);
-		*/
+		
 }
 
 void MainWindow::scanButtonPress()
@@ -465,6 +471,7 @@ void MainWindow::scanButtonPress()
 
 void MainWindow::savePointCloud()
 {
+	
 	QString filename = QFileDialog::getSaveFileName(this, "Save File", "", "PCD (*.pcd) ;; PLY (*.ply)");
 
 	if (filename.isEmpty()) return;
@@ -489,7 +496,7 @@ void MainWindow::scan()
 		togglecount++;
 	}
 
-	else if (scancount == 7) {			//effectively delayed 150ms
+	else if (scancount == 7) {			//effectively delayed 7*30ms = 210ms
 
 		if (togglecount % 2 == 0)
 			capture >> laserOnImg;
@@ -504,7 +511,7 @@ void MainWindow::scan()
 		return;
 
 	if (togglecount % 2 == 0) {	//have both laser on and off successive images
-		framePointsToCloud(laserOffImg, laserOnImg, 1, model);
+		framePointsToCloud(laserOffImg, laserOnImg, 1);// , model);
 		cv::imshow("Laser On", laserOnImg);
 		cv::imshow("Laser Off", laserOffImg);
 	}
@@ -522,30 +529,57 @@ void MainWindow::updateTracker()
 
 		bool isToolMatrixValid = false; 
 
-		if (repository->GetTransform(laser2TrackerName, laser2Tracker, &isToolMatrixValid) == PLUS_SUCCESS && isToolMatrixValid)
+		if (repository->GetTransform(laser2TrackerName, laser2Tracker, &isToolMatrixValid) == PLUS_SUCCESS && isToolMatrixValid) {
 			controlWidget->lightWidgets[1]->setGreen();
+			laserSeen = true;
+		}
+		
 		else
-			controlWidget->lightWidgets[1]->setRed(); 
-
+		{
+			controlWidget->lightWidgets[1]->setRed();
+			laserSeen = false;
+		}
 		bool isCameraMatrixValid = false; 
 
-		if (repository->GetTransform(camera2TrackerName, camera2Tracker, &isCameraMatrixValid) == PLUS_SUCCESS && isCameraMatrixValid)
+		if (repository->GetTransform(camera2TrackerName, camera2Tracker, &isCameraMatrixValid) == PLUS_SUCCESS && isCameraMatrixValid) {
 			controlWidget->lightWidgets[0]->setGreen();
-		else
-			controlWidget->lightWidgets[0]->setRed(); 
+			cameraSeen = true;
+		}
+		else {
+			controlWidget->lightWidgets[0]->setRed();
+			cameraSeen = false;
+		}
 	}
 }
 
-double MainWindow::getCameraPosition(int i, int j)		//x: (0,3), y:(1,3), z:(2,3)
+void MainWindow::getCameraPosition()		//x: (0,3), y:(1,3), z:(2,3)
 {
-	return camera2Tracker->GetElement(i, j);
+	camera.x = camera2Tracker->GetElement(0,3);
+	camera.y = camera2Tracker->GetElement(1, 3);
+	camera.z = camera2Tracker->GetElement(2, 3);
+
 }
 
-double MainWindow::getLaserPosition(int i, int j)
+void MainWindow::getLaserPosition()
 {
-	return laser2Tracker->GetElement(i, j);
+	laser.x = laser2Tracker->GetElement(0, 3);
+	laser.y = laser2Tracker->GetElement(1, 3);
+	laser.z = laser2Tracker->GetElement(2, 3);
 }
 
+void MainWindow::getNormalPosition()
+{
+	normal.x = normal2Tracker->GetElement(0, 3);
+	normal.y = normal2Tracker->GetElement(1, 3);
+	normal.z = normal2Tracker->GetElement(2, 3); 
+}
+
+void MainWindow::getOriginPosition()
+{
+	origin.x = origin2Tracker->GetElement(0, 3);
+	origin.y = origin2Tracker->GetElement(1, 3);
+	origin.z = origin2Tracker->GetElement(2, 3);
+}
 void MainWindow::saveButtonPressed()
 {
 	if (isReadyToSave && capture.isOpened()) {
@@ -802,30 +836,35 @@ vector<cv::Vec4i> MainWindow::detectLaserLine(cv::Mat &laserOff, cv::Mat &laserO
 }
 
 
-void MainWindow::framePointsToCloud(cv::Mat &laserOff, cv::Mat &laserOn, int res, EndoModel* model)
+void MainWindow::framePointsToCloud(cv::Mat &laserOff, cv::Mat &laserOn, int res)//, EndoModel* model)
 {
 	//EndoModel* model = new EndoModel(); 
+	//check if able to transform all entities into tracker space
+	if (!getTransforms())
+	{
+		LOG_ERROR("Unable to successfully transform one or many transforms");
+		return;
+	}
+
+	//get positions of tools
+	getCameraPosition();
+	getLaserPosition();
+
+	//laser plane geometry
+	getNormalPosition(); 
+	getOriginPosition();
+
 	cv::Mat laserLineImg = subtractLaser(laserOff, laserOn);
-
-	linalg::EndoPt camera, laser, origin, normal, detectedPt;
-
-	camera.x = getCameraPosition(0, 3);
-	camera.y = getCameraPosition(1, 3);
-	camera.z = getCameraPosition(2, 3);
-
-	laser.x = getLaserPosition(0, 3);
-	laser.y = getLaserPosition(1, 3);
-	laser.z = getLaserPosition(2, 3);
-
-	//relationship between the laser and plane origin and normal
+	linalg::EndoPt detectedPt;
 
 	for (int row = HORIZONTAL_OFFSET; row < laserLineImg.rows - HORIZONTAL_OFFSET; row += res) {
 		for (int col = VERTICAL_OFFSET; col < laserLineImg.cols - VERTICAL_OFFSET; col++) {
 			if (laserLineImg.at<uchar>(row, col) == 255) {
 
-
 				detectedPt.x = col;
 				detectedPt.y = row;
+
+				getPixelLocation(detectedPt); 
 
 				linalg::EndoLine camLine = linalg::lineFromPoints(camera, detectedPt);
 
@@ -844,7 +883,6 @@ void MainWindow::framePointsToCloud(cv::Mat &laserOff, cv::Mat &laserOn, int res
 			}
 		}
 	}
-
 }
 
 void MainWindow::help()
@@ -864,13 +902,55 @@ void MainWindow::about()
 			"Jordan Geurten"));
 }
 
+void MainWindow::getPixelLocation(linalg::EndoPt pt)
+{
+	//X Y Z = camera2Image(inv)*intrinsics(inv)*pt
+	
+}
+
 void MainWindow::saveData(linalg::EndoPt point)
 {
 	for (int i = 0; i < 3; i++)
-		myfile << MainWindow::getCameraPosition(i, 3) << ",";
+		myfile << camera2Tracker->GetElement(i, 3) << ",";
 
 	for (int i = 0; i < 3; i++)
-		myfile << MainWindow::getLaserPosition(i, 3) << ",";
+		myfile << laser2Tracker->GetElement(i, 3) << ",";
 
 	myfile << point.x << "," << point.y << "," << point.z << endl;
+}
+
+bool MainWindow::getTransforms()
+{
+	bool isValid(false);
+	trackerChannel->GetTrackedFrame(trackedFrame);
+	repository->SetTransforms(trackedFrame);
+
+	if (repository->GetTransform(normal2TrackerName, normal2Tracker, &isValid) != PLUS_SUCCESS || !isValid) {
+		LOG_ERROR("Unable to successfully transform plane normal to tracker");
+		return false;
+	}
+	if (repository->GetTransform(origin2TrackerName, origin2Tracker, &isValid) != PLUS_SUCCESS || !isValid) {
+		LOG_ERROR("Unable to successfully transform plane origin to tracker");
+		return false;
+	}
+
+	if (repository->GetTransform(imagePlane2TrackerName, imagePlane2Tracker, &isValid) != PLUS_SUCCESS || !isValid)
+	{
+		LOG_ERROR("Unable to successfully transform image plane to tracker");
+		return false;
+	}
+
+	if (repository->GetTransform(camera2TrackerName, camera2Tracker, &isValid) != PLUS_SUCCESS || !isValid)
+	{
+		LOG_ERROR("Unable to successfully transform camera to tracker");
+		return false;
+	}
+
+	if (repository->GetTransform(laser2TrackerName, laser2Tracker, &isValid) != PLUS_SUCCESS || !isValid)
+	{
+		LOG_ERROR("Unable to successfully transform laser to tracker");
+		return false;
+	}
+
+	return true; 
 }
