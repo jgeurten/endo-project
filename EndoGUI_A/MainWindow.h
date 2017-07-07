@@ -137,7 +137,7 @@ private:
 	vtkSmartPointer<vtkMatrix4x4>					normal2Tracker = vtkSmartPointer<vtkMatrix4x4>::New();
 	vtkSmartPointer<vtkMatrix4x4>					origin2Tracker = vtkSmartPointer<vtkMatrix4x4>::New();
 	vtkSmartPointer<vtkMatrix4x4>					imagePlane2Tracker = vtkSmartPointer<vtkMatrix4x4>::New();
-
+	vtkSmartPointer<vtkMatrix4x4>					cameraInv = vtkSmartPointer<vtkMatrix4x4>::New(); 
 
 	// Plus Transform Names
 	PlusTransformName								camera2TrackerName = PlusTransformName("Camera", "Tracker");
@@ -189,14 +189,14 @@ private:
 	string				configFile, intrinsicsFile, resultsDir, calibDir;
 
 	Serial				*comPort;
-	cv::Mat				streamImg, laserOnImg, laserOffImg;
-	cv::Mat				frame;
-	cv::Mat				savingMat;
+	cv::Mat				distStreamImg, streamImg, laserOnImg, laserOffImg, distlaserOnImg, distlaserOffImg;
+	cv::Mat				frame, intrinsics, distortion, savingMat, newCamMat, map1, map2;
 	string				fileName;
 	cv::VideoCapture	capture;
 	cv::VideoWriter		gVideoWrite;
 	int					frameWidth, frameHeight;
-
+	cv::Point pt1;
+	int					scanNumber = 0;
 	int					scancount = 0;
 	int					togglecount = 0;
 	int					brightness = 6;
@@ -220,7 +220,6 @@ private:
 	void camEndocam(bool);
 	void updateTracker(); 
 	void savePointCloud(); 
-
 	void saveData(linalg::EndoPt point);
 	void update_image();
 	void saveVideo();
@@ -236,6 +235,7 @@ private:
 	void getLaserPosition();
 	void getNormalPosition(); 
 	void getOriginPosition(); 
+	linalg::EndoPt getPixelPosition(int row, int col); 
 
 
 	

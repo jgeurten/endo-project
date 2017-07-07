@@ -102,7 +102,7 @@ namespace linalg
 		EndoPt unitCam = unitVector(camLine.b);
 		double angle = dot(norm, unitCam);
 
-		if (angle < 1e-6)	//line is parallel to plane
+		if (abs(angle) < 1e-6)	//line is parallel to plane
 		{
 			EndoPt diff = MakePoint(camLine.a.x - origin.x, camLine.a.y - origin.y, camLine.a.z - origin.z);
 			if (abs(dot(diff, norm)) < 1e-6)		//line lays on plane

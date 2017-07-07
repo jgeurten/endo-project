@@ -57,6 +57,8 @@
 #include <vtkTexture.h>
 #include <vtkImageImport.h>
 #include <vtkImageMapper.h>
+#include <vtkMatrix3x3.h>
+#include <vtkMatrix4x4.h>
 
 // Plus
 #include <vtkPlusNDITracker.h>
@@ -110,6 +112,10 @@ MainWindow::MainWindow(QWidget *parent)
 	resize(QDesktopWidget().availableGeometry(this).size()*0.6);
 	setWindowTitle(tr("Endo Scanner"));
 	size = this->size; 
+	
+	//Parameters from ./config/LogitechC920_Distortion(or Intrinsics)3.xml
+	intrinsics =  (cv::Mat1d(3, 3) << 6.21962708e+002, 0, 3.18246521e+002, 0, 6.19908875e+002, 2.36307892e+002, 0, 0, 1);
+	distortion = (cv::Mat1d(1, 4) << 8.99827331e-002, -2.04057172e-001, -3.27174924e-003, -2.31121108e-003);
 }
 
 //destructor
@@ -372,6 +378,13 @@ void MainWindow::camera_button_clicked()
 			framePd = 1000 / (int)capture.get(CV_CAP_PROP_FPS);
 			playing = true;
 			controlWidget->streamButton->setText(tr("Stop Stream"));
+
+			//Get undistorted transform map first time:
+			capture >> distStreamImg;
+			cv::undistort(distStreamImg, streamImg, intrinsics, distortion);
+			cv::initUndistortRectifyMap(intrinsics, distortion, cv::Mat(), intrinsics, cv::Size(distStreamImg.cols, distStreamImg.rows),
+				CV_32FC1, map1, map2);
+
 			if (!trackerInit)
 				trackTimer->start(40);
 			
@@ -395,22 +408,21 @@ void MainWindow::camera_button_clicked()
 	}
 }
 
-
-
 void MainWindow::update_image()
 {
 
 	
   	if (capture.isOpened())
 	{
-		
 		cv::namedWindow("Control", CV_WINDOW_NORMAL);
 		cvCreateTrackbar("Brightness", "Control", &brightness, 100);
 		cvCreateTrackbar("Contrast", "Control", &contrast, 100); 
 		capture.set(CV_CAP_PROP_CONTRAST, (double)contrast);
 		capture.set(CV_CAP_PROP_BRIGHTNESS, (double)brightness);
 		
-		capture >> streamImg; 
+		capture >> distStreamImg; 
+		cv::remap(distStreamImg, streamImg, map1, map2, cv::INTER_CUBIC);
+
 		cv::Size s = streamImg.size();
 		image = QImage((const unsigned char*)(streamImg.data), streamImg.cols, streamImg.rows, streamImg.cols*streamImg.channels(), QImage::Format_RGB888).rgbSwapped();
 
@@ -439,12 +451,17 @@ void MainWindow::update_image()
 		repaint();
 	}
 	else
-		statusBar()->showMessage(tr("Unable to Detect Camera"), 5000);
-		
+		statusBar()->showMessage(tr("Unable to Detect Camera"), 5000);		
 }
 
 void MainWindow::scanButtonPress()
 {
+	if (!mcuConnected)
+	{
+		statusBar()->showMessage(tr("Connect MCU first"));
+		return; 
+	}
+
 	if (!isScanning) {
 		scanTimer = new QTimer(this);
 		connect(scanTimer, SIGNAL(timeout()), this, SLOT(scan()));
@@ -454,10 +471,12 @@ void MainWindow::scanButtonPress()
 		isScanning = true; 
 		
 		//model = new EndoModel();
-		ofstream myfile("./Data/Scan.csv");
+
+		/*ofstream myfile("./Data/Scan.csv");
 		myfile << "Cam X," << "Cam Y," << "Cam Z,"
 			<< "Tool X," << "Tool Y," << "Tool Z,"
 			<< "Laser X," << "Laser Y," << "Laser Z" << endl;
+		*/
 		
 	}
 	else {
@@ -487,7 +506,6 @@ void MainWindow::savePointCloud()
 	}
 }
 
-
 void MainWindow::scan()
 {
 	scancount++;
@@ -499,18 +517,21 @@ void MainWindow::scan()
 	else if (scancount == 7) {			//effectively delayed 7*30ms = 210ms
 
 		if (togglecount % 2 == 0)
-			capture >> laserOnImg;
+			capture >> distlaserOnImg;
 
 		else 
-			capture >> laserOffImg;
+			capture >> distlaserOffImg;
 				
 		scancount = 0;
 	}
 
-	if (laserOnImg.empty() || laserOffImg.empty())	//only true for toggle count = 1
+	if (distlaserOnImg.empty() || distlaserOffImg.empty())	//only true for toggle count = 1
 		return;
 
 	if (togglecount % 2 == 0) {	//have both laser on and off successive images
+
+		cv::remap(distlaserOnImg, laserOnImg, map1, map2, cv::INTER_CUBIC);
+		cv::remap(distlaserOffImg, laserOffImg, map1, map2, cv::INTER_CUBIC);
 		framePointsToCloud(laserOffImg, laserOnImg, 1);// , model);
 		cv::imshow("Laser On", laserOnImg);
 		cv::imshow("Laser Off", laserOffImg);
@@ -554,9 +575,9 @@ void MainWindow::updateTracker()
 
 void MainWindow::getCameraPosition()		//x: (0,3), y:(1,3), z:(2,3)
 {
-	camera.x = camera2Tracker->GetElement(0,3);
-	camera.y = camera2Tracker->GetElement(1, 3);
-	camera.z = camera2Tracker->GetElement(2, 3);
+	camera.x = imagePlane2Tracker->GetElement(0,3);
+	camera.y = imagePlane2Tracker->GetElement(1, 3);
+	camera.z = imagePlane2Tracker->GetElement(2, 3);
 
 }
 
@@ -580,6 +601,7 @@ void MainWindow::getOriginPosition()
 	origin.y = origin2Tracker->GetElement(1, 3);
 	origin.z = origin2Tracker->GetElement(2, 3);
 }
+
 void MainWindow::saveButtonPressed()
 {
 	if (isReadyToSave && capture.isOpened()) {
@@ -778,7 +800,7 @@ void MainWindow::camEndocam(bool checked)
 cv::Mat MainWindow::subtractLaser(cv::Mat &laserOff, cv::Mat &laserOn)
 {
 	//take in image with and without laser ON and return subtracted cv mat image
-	cv::Mat bwLaserOn, bwLaserOff, subImg, subImgBW, threshImg, result;
+	cv::Mat bwLaserOn, bwLaserOff, subImg, subImgBW, threshImg;
 	cv::Mat lineImg(480, 640, CV_8U, cv::Scalar(0));	//fill with 0's for black and white img 
 
 	cv::subtract(laserOn, laserOff, subImg);
@@ -815,8 +837,10 @@ cv::Mat MainWindow::subtractLaser(cv::Mat &laserOff, cv::Mat &laserOn)
 		}
 	}
 	cv::imshow("lineImg", lineImg);
-	return result;
+	return lineImg;
 }
+
+
 
 vector<cv::Vec4i> MainWindow::detectLaserLine(cv::Mat &laserOff, cv::Mat &laserOn)
 {
@@ -835,8 +859,7 @@ vector<cv::Vec4i> MainWindow::detectLaserLine(cv::Mat &laserOff, cv::Mat &laserO
 	return lines;
 }
 
-
-void MainWindow::framePointsToCloud(cv::Mat &laserOff, cv::Mat &laserOn, int res)//, EndoModel* model)
+void MainWindow::framePointsToCloud(cv::Mat &laserOn, cv::Mat &laserOff,  int res)//, EndoModel* model)
 {
 	//EndoModel* model = new EndoModel(); 
 	//check if able to transform all entities into tracker space
@@ -855,18 +878,15 @@ void MainWindow::framePointsToCloud(cv::Mat &laserOff, cv::Mat &laserOn, int res
 	getOriginPosition();
 
 	cv::Mat laserLineImg = subtractLaser(laserOff, laserOn);
-	linalg::EndoPt detectedPt;
+	linalg::EndoPt pixel;
 
-	for (int row = HORIZONTAL_OFFSET; row < laserLineImg.rows - HORIZONTAL_OFFSET; row += res) {
+	for (int row = HORIZONTAL_OFFSET; row < laserLineImg.rows - HORIZONTAL_OFFSET; row++) {
 		for (int col = VERTICAL_OFFSET; col < laserLineImg.cols - VERTICAL_OFFSET; col++) {
 			if (laserLineImg.at<uchar>(row, col) == 255) {
+				
+				pixel = getPixelPosition(row, col); 
 
-				detectedPt.x = col;
-				detectedPt.y = row;
-
-				getPixelLocation(detectedPt); 
-
-				linalg::EndoLine camLine = linalg::lineFromPoints(camera, detectedPt);
+				linalg::EndoLine camLine = linalg::lineFromPoints(camera, pixel);
 
 				linalg::EndoPt intersection = linalg::solveIntersection(normal, origin, camLine);
 
@@ -875,9 +895,6 @@ void MainWindow::framePointsToCloud(cv::Mat &laserOff, cv::Mat &laserOn, int res
 					break;
 				}
 				else {
-					//point manipulation
-					linalg::EndoPt newPoint;
-					//model->addPointToPointCloud(newPoint);
 					saveData(intersection);
 				}
 			}
@@ -894,6 +911,7 @@ void MainWindow::help()
 			"Save: once the endoscanner has finished the scan to save video \n\n"
 			"3D rendering: after saving the video, click on 3D render"));
 }
+
 void MainWindow::about()
 {
 	QMessageBox::about(this, tr("About Page - Something about the GUI"),
@@ -902,14 +920,30 @@ void MainWindow::about()
 			"Jordan Geurten"));
 }
 
-void MainWindow::getPixelLocation(linalg::EndoPt pt)
+linalg::EndoPt MainWindow::getPixelPosition(int row, int col)
 {
 	//X Y Z = camera2Image(inv)*intrinsics(inv)*pt
-	
+	//vtkMatrix4x4::Invert(camera2Image, cameraInv);	//get inverse of rotational/translational matrix
+	linalg::EndoPt location; 
+	//location.x = (col - intrinsics.at<uchar>(0, 2)) / intrinsics.at<uchar>(0,0); 
+	//location.y = (row - intrinsics.at<uchar>(1, 2)) / intrinsics.at<uchar>(1,1);
+	location.x = (col - 3.18246521e+002) / 6.21962708e+002;
+	location.y = (row - 2.36307892e+002) / 6.19908875e+002;
+	location.z = 1.00; 
+	return location;
 }
 
 void MainWindow::saveData(linalg::EndoPt point)
 {
+	scanNumber++;
+	string name = "./Results/scan" + to_string(scanNumber);
+	string fullname = name + ".csv";
+	ofstream myfile(fullname);
+
+	myfile << "Cam X," << "Cam Y," << "Cam Z,"
+		<< "Tool X," << "Tool Y," << "Tool Z,"
+		<< "Laser X," << "Laser Y," << "Laser Z" << endl;
+
 	for (int i = 0; i < 3; i++)
 		myfile << camera2Tracker->GetElement(i, 3) << ",";
 
@@ -917,6 +951,7 @@ void MainWindow::saveData(linalg::EndoPt point)
 		myfile << laser2Tracker->GetElement(i, 3) << ",";
 
 	myfile << point.x << "," << point.y << "," << point.z << endl;
+	
 }
 
 bool MainWindow::getTransforms()
