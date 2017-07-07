@@ -870,7 +870,7 @@ void MainWindow::framePointsToCloud(cv::Mat &laserOn, cv::Mat &laserOff,  int re
 	}
 
 	//get positions of tools
-	getCameraPosition();
+	getCameraPosition();	//get camera centre 
 	getLaserPosition();
 
 	//laser plane geometry
@@ -984,6 +984,12 @@ bool MainWindow::getTransforms()
 	if (repository->GetTransform(laser2TrackerName, laser2Tracker, &isValid) != PLUS_SUCCESS || !isValid)
 	{
 		LOG_ERROR("Unable to successfully transform laser to tracker");
+		return false;
+	}
+
+	if (repository->GetTransform(camera2ImageName, camera2Image, &isValid) != PLUS_SUCCESS || !isValid)
+	{
+		LOG_ERROR("Unable to successfully transform camera to image");
 		return false;
 	}
 
