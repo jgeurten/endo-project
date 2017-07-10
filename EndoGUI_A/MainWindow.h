@@ -35,6 +35,7 @@
 #include <vtkRenderer.h>
 #include <vtkImageImport.h>
 #include <vtk_glew.h>
+#include <vtkMatrix3x3.h>
 
 //opencv includes
 #include <opencv2/core/core.hpp>
@@ -202,9 +203,9 @@ private:
 	int					brightness = 6;
 	int					contrast = 18;
 	ofstream			myfile; 
-
+	
 	linalg::EndoPt camera, normal, laser, origin; 
-
+	vtkSmartPointer<vtkMatrix3x3>					intrinsicsMat = vtkSmartPointer<vtkMatrix3x3>::New();
 
 	private slots:
 
@@ -229,6 +230,7 @@ private:
 	cv::Mat subtractLaser(cv::Mat &laserOff, cv::Mat &laserOn);
 	vector<cv::Vec4i> detectLaserLine(cv::Mat &laserOff, cv::Mat &laserOn);
 	bool getTransforms();
+	linalg::EndoPt getDirVector(int row, int col);
 
 	public:
 	void getCameraPosition();
@@ -236,7 +238,7 @@ private:
 	void getNormalPosition(); 
 	void getOriginPosition(); 
 	linalg::EndoPt getPixelPosition(int row, int col); 
-
+	
 
 	
 

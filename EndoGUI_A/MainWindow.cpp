@@ -59,6 +59,7 @@
 #include <vtkImageMapper.h>
 #include <vtkMatrix3x3.h>
 #include <vtkMatrix4x4.h>
+#include <vtkVector.h>
 
 // Plus
 #include <vtkPlusNDITracker.h>
@@ -76,6 +77,7 @@
 #include "C:/RVTK-bin/Deps/Plus-bin/PlusApp/fCal/Toolboxes/QAbstractToolbox.h"
 #include "PlusMath.h"
 #include "PlusXMLUtils.h"
+
 
 //MSDN includes
 #include <Windows.h>
@@ -116,6 +118,11 @@ MainWindow::MainWindow(QWidget *parent)
 	//Parameters from ./config/LogitechC920_Distortion(or Intrinsics)3.xml
 	intrinsics =  (cv::Mat1d(3, 3) << 6.21962708e+002, 0, 3.18246521e+002, 0, 6.19908875e+002, 2.36307892e+002, 0, 0, 1);
 	distortion = (cv::Mat1d(1, 4) << 8.99827331e-002, -2.04057172e-001, -3.27174924e-003, -2.31121108e-003);
+	
+	intrinsicsMat->SetElement(0, 0, 6.21962708e+002);
+	intrinsicsMat->SetElement(0, 2, 3.18246521e+002);
+	intrinsicsMat->SetElement(1,1, 6.19908875e+002);
+	intrinsicsMat->SetElement(1, 2, 2.36307892e+002);
 }
 
 //destructor
@@ -878,17 +885,18 @@ void MainWindow::framePointsToCloud(cv::Mat &laserOn, cv::Mat &laserOff,  int re
 	getOriginPosition();
 
 	cv::Mat laserLineImg = subtractLaser(laserOff, laserOn);
-	linalg::EndoPt pixel;
+	linalg::EndoPt directionVector, cameraCentre;
+	cameraCentre.x = intrinsicsMat->GetElement(0, 2);
+	cameraCentre.y = intrinsicsMat->GetElement(1, 2);
+
 
 	for (int row = HORIZONTAL_OFFSET; row < laserLineImg.rows - HORIZONTAL_OFFSET; row++) {
 		for (int col = VERTICAL_OFFSET; col < laserLineImg.cols - VERTICAL_OFFSET; col++) {
 			if (laserLineImg.at<uchar>(row, col) == 255) {
-				
-				pixel = getPixelPosition(row, col); 
 
-				linalg::EndoLine camLine = linalg::lineFromPoints(camera, pixel);
-
-				linalg::EndoPt intersection = linalg::solveIntersection(normal, origin, camLine);
+				directionVector = getDirVector(row, col);				
+				linalg::EndoLine camLine = linalg::MakeLine(cameraCentre, directionVector);				//in world coordinates
+				linalg::EndoPt intersection = linalg::solveIntersection(normal, origin, camLine);		//in world coordinates
 
 				if (intersection.x == 0.0) {
 					qDebug("No intersection found");
@@ -900,6 +908,12 @@ void MainWindow::framePointsToCloud(cv::Mat &laserOn, cv::Mat &laserOff,  int re
 			}
 		}
 	}
+}
+
+linalg::EndoPt MainWindow::getDirVector(int row, int col)
+{
+	double x[3] = { col, row, 1.0 };
+	
 }
 
 void MainWindow::help()

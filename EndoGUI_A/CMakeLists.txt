@@ -18,8 +18,8 @@ SET(CMAKE_AUTORCC ON)
 
 FIND_PACKAGE(OpenCV REQUIRED NO_MODULE)
 FIND_PACKAGE(PlusLib REQUIRED NO_MODULE)
-
 FIND_PACKAGE(vtk REQUIRED)
+
 INCLUDE(${VTK_USE_FILE})
 
 file(GLOB EndoScannerArduinoFirmware_headers RELATIVE "EndoScannerArduinoFirmware" "*.h")
