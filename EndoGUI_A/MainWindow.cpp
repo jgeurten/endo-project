@@ -102,7 +102,7 @@ MainWindow::MainWindow(QWidget *parent)
 	mcuConnected = false;
 	laserOn = false;
 	trackerInit = false;
-	isScanning = false; 
+	isScanning = false;
 	laserSeen = false;
 	cameraSeen = false;
 	//cv::VideoCapture capture = new cv::VideoCapture();
@@ -113,10 +113,10 @@ MainWindow::MainWindow(QWidget *parent)
 	createVTKObject();
 	resize(QDesktopWidget().availableGeometry(this).size()*0.6);
 	setWindowTitle(tr("Endo Scanner"));
-	size = this->size; 
-	
+	size = this->size;
+
 	//Parameters from ./config/LogitechC920_Distortion(or Intrinsics)3.xml
-	intrinsics =  (cv::Mat1d(3, 3) << 6.21962708e+002, 0, 3.18246521e+002, 0, 6.19908875e+002, 2.36307892e+002, 0, 0, 1);
+	intrinsics = (cv::Mat1d(3, 3) << 6.21962708e+002, 0, 3.18246521e+002, 0, 6.19908875e+002, 2.36307892e+002, 0, 0, 1);
 	distortion = (cv::Mat1d(1, 4) << 8.99827331e-002, -2.04057172e-001, -3.27174924e-003, -2.31121108e-003);
 }
 
@@ -131,34 +131,34 @@ MainWindow::~MainWindow()
 void MainWindow::createMenus()
 {
 	fileMenu = menuBar()->addMenu(tr("&File"));
-	
+
 	exitAct = new QAction(tr("&Exit"), this);
 	exitAct->setShortcuts(QKeySequence::Quit);
 	exitAct->setStatusTip(tr("Exit application"));
 	connect(exitAct, SIGNAL(triggered()), this, SLOT(exit()));
 
-	
+
 	// File Menu
-	
+
 	fileMenu->addAction(exitAct);
 
 	//Camera menu actions:
-	webcam = new QAction(tr("Webcam"), this); 
-	webcam->setCheckable(true); 
-	webcam->setChecked(true); 
+	webcam = new QAction(tr("Webcam"), this);
+	webcam->setCheckable(true);
+	webcam->setChecked(true);
 	connect(webcam, SIGNAL(toggled(bool)), this, SLOT(camWebcam(bool)));
-	
+
 	endoCam = new QAction(tr("Endocam"), this);
 	endoCam->setCheckable(true);
 	endoCam->setChecked(false);
 	connect(endoCam, SIGNAL(toggled(bool)), this, SLOT(camEndocam(bool)));
 
 	//Camera menu:
-	 
+
 	cameraMenu = menuBar()->addMenu(tr("&Camera"));
 	cameraMenu->addAction(webcam);
 	cameraMenu->addAction(endoCam);
-	
+
 	//Help menu actions:
 	aboutAct = new QAction(tr("&About"), this);
 	aboutAct->setStatusTip(tr("About application"));
@@ -199,16 +199,16 @@ void MainWindow::createControlDock()
 	mainFrame->setLayout(controlsLayout);
 
 	controlDock->setWidget(mainFrame);
-	
+
 	controlWidget = new ControlWidget(this);
 	controlsLayout->addWidget(controlWidget);
 
 	connect(controlWidget->streamButton, SIGNAL(clicked()), this, SLOT(camera_button_clicked()));
-	connect(controlWidget->saveButton, SIGNAL(clicked()), this,   SLOT(saveButtonPressed()));
-	connect(controlWidget->mcuButton, SIGNAL(clicked()), this,    SLOT(connectMCU()));
-	connect(controlWidget->laserButton, SIGNAL(clicked()), this,  SLOT(toggleLaser()));
-	connect(controlWidget->trackerButton, SIGNAL(clicked()), this,SLOT(startTracker()));
-	connect(controlWidget->scanButton, SIGNAL(clicked()), this,   SLOT(scanButtonPress()));
+	connect(controlWidget->saveButton, SIGNAL(clicked()), this, SLOT(saveButtonPressed()));
+	connect(controlWidget->mcuButton, SIGNAL(clicked()), this, SLOT(connectMCU()));
+	connect(controlWidget->laserButton, SIGNAL(clicked()), this, SLOT(toggleLaser()));
+	connect(controlWidget->trackerButton, SIGNAL(clicked()), this, SLOT(startTracker()));
+	connect(controlWidget->scanButton, SIGNAL(clicked()), this, SLOT(scanButtonPress()));
 
 	//create trackTimer to refresh the image every x milliseconds depending on the framerate of the camera
 	trackTimer = new QTimer(this);
@@ -236,7 +236,7 @@ void MainWindow::startTracker()
 			// Get virtual mixer
 			if (dataCollector->GetDevice(mixerDevice, "TrackedVideoDevice") != PLUS_SUCCESS)
 			{
-				qDebug() <<"Unable to locate the device with ID = \"TrackedVideoDevice\". Check config file.";
+				qDebug() << "Unable to locate the device with ID = \"TrackedVideoDevice\". Check config file.";
 				return;
 			}
 			webcamVideo = dynamic_cast<vtkPlusMmfVideoSource *>(webcamDevice);
@@ -267,7 +267,7 @@ void MainWindow::startTracker()
 		{
 			LOG_ERROR("Tracking device is not NDI/Polaris/Aurora. Could not connect.");
 			statusBar()->showMessage(tr("Could not connect!"), 5000);
-			return; 
+			return;
 		}
 
 		// Connect to devices
@@ -277,14 +277,14 @@ void MainWindow::startTracker()
 			std::cout << "....................... [FAILED]" << std::endl;
 			LOG_ERROR("Failed to connect to devices!");
 			statusBar()->showMessage(tr("Failed to connect to devices!"), 5000);
-			return; 
+			return;
 		}
 
 		if (dataCollector->Start() != PLUS_SUCCESS)
 		{
 			LOG_ERROR("Failed to connect to devices!");
 			statusBar()->showMessage(tr("Failed to connect to devices!"), 5000);
-			return; 
+			return;
 		}
 
 		std::cout << "....................... [OK]" << std::endl;
@@ -293,20 +293,20 @@ void MainWindow::startTracker()
 		{
 			LOG_ERROR("Configuration incorrect for vtkPlusTransformRepository.");
 			statusBar()->showMessage(tr("Configuration incorrect for vtkPlusTransformRepository."), 5000);
-			return; 
+			return;
 		}
 
 		if (ndiTracker->GetOutputChannelByName(trackerChannel, "TrackerStream") != PLUS_SUCCESS)
 		{
 			LOG_ERROR("Unable to locate the channel with Id = \"TrackerStream\". check config file.");
 			statusBar()->showMessage(tr("Unable to locate the channel"), 5000);
-			return; 
+			return;
 		}
 
 
-		if(!playing)
+		if (!playing)
 			trackTimer->start(40); //minimum is 17 ms
-		trackerInit = true; 
+		trackerInit = true;
 		controlWidget->trackerButton->setText(tr("Stop Tracking"));
 		controlWidget->trackerButton->setChecked(true);
 	}
@@ -314,14 +314,14 @@ void MainWindow::startTracker()
 	else  //already initalized - unitialize...
 	{
 		trackTimer->stop();
-		trackerInit = false; 
+		trackerInit = false;
 		controlWidget->trackerButton->setText(tr("Start Tracking"));
 		controlWidget->trackerButton->setChecked(false);
 		statusBar()->showMessage(tr("Stopping Tracking"), 2000);
 		controlWidget->lightWidgets[0]->setBlue();
 		controlWidget->lightWidgets[1]->setBlue();
 	}
-	
+
 }
 
 void MainWindow::createVTKObject()
@@ -347,13 +347,13 @@ void MainWindow::createVTKObject()
 	if (CreateDirectory(calibDir.c_str(), NULL) ||
 		ERROR_ALREADY_EXISTS != GetLastError())
 		std::cout << "calibration directory created." << std::endl;
-	
+
 	trackerDevice = NULL;
 
 	// Read configuration file
 	if (PlusXmlUtils::ReadDeviceSetConfigurationFromFile(configRootElement, configFile.c_str()) == PLUS_FAIL)
 	{
-		cout << "Unable to read configuration from file" << configFile.c_str() <<endl;
+		cout << "Unable to read configuration from file" << configFile.c_str() << endl;
 		return;
 	}
 
@@ -362,9 +362,9 @@ void MainWindow::createVTKObject()
 	// Read configuration file
 	if (dataCollector->ReadConfiguration(configRootElement) != PLUS_SUCCESS)
 	{
-		cout << "Configuration incorrect for vtkPlusDataCollector." <<endl;
+		cout << "Configuration incorrect for vtkPlusDataCollector." << endl;
 		return;
-	}	
+	}
 	//6.21962708e+002, 0, 3.18246521e+002, 0, 6.19908875e+002, 2.36307892e+002, 0, 0, 1);
 	//Set point 2 image plane transform explicitly:
 	point2Projection->SetElement(0, 0, 1);
@@ -384,13 +384,14 @@ void MainWindow::createVTKObject()
 	point2Projection->SetElement(3, 2, 0);
 	point2Projection->SetElement(3, 3, 1);
 
+	vtkMatrix4x4::Invert(point2Projection, projection2Point);	//camera plane to pixel
 	//Handle vtk transform point 2 tracker:
 	point2Tracker->PostMultiply();
 
 }
 
 void MainWindow::camera_button_clicked()
-{ 
+{
 	if (!playing) {
 		capture = cv::VideoCapture(0);		//consider changing to plus get frame
 		capture.open(0);
@@ -411,7 +412,7 @@ void MainWindow::camera_button_clicked()
 
 			if (!trackerInit)
 				trackTimer->start(40);
-			
+
 		}
 		else
 			statusBar()->showMessage(tr("Unable to Detect Camera"), 3000);
@@ -423,7 +424,7 @@ void MainWindow::camera_button_clicked()
 		playing = false;
 		trackTimer->stop();
 	}
-	
+
 	if (!playing)
 	{
 
@@ -435,16 +436,16 @@ void MainWindow::camera_button_clicked()
 void MainWindow::update_image()
 {
 
-	
-  	if (capture.isOpened())
+
+	if (capture.isOpened())
 	{
 		cv::namedWindow("Control", CV_WINDOW_NORMAL);
 		cvCreateTrackbar("Brightness", "Control", &brightness, 100);
-		cvCreateTrackbar("Contrast", "Control", &contrast, 100); 
+		cvCreateTrackbar("Contrast", "Control", &contrast, 100);
 		capture.set(CV_CAP_PROP_CONTRAST, (double)contrast);
 		capture.set(CV_CAP_PROP_BRIGHTNESS, (double)brightness);
-		
-		capture >> distStreamImg; 
+
+		capture >> distStreamImg;
 		cv::remap(distStreamImg, streamImg, map1, map2, cv::INTER_CUBIC);
 
 		cv::Size s = streamImg.size();
@@ -468,14 +469,14 @@ void MainWindow::update_image()
 			qWarning() << "Type Not Handled";
 			break;
 		}
-		
+
 		if (isSaving)
 			saveVideo();
 
 		repaint();
 	}
 	else
-		statusBar()->showMessage(tr("Unable to Detect Camera"), 5000);		
+		statusBar()->showMessage(tr("Unable to Detect Camera"), 5000);
 }
 
 void MainWindow::scanButtonPress()
@@ -483,7 +484,7 @@ void MainWindow::scanButtonPress()
 	if (!mcuConnected)
 	{
 		statusBar()->showMessage(tr("Connect MCU first"));
-		return; 
+		return;
 	}
 
 	if (!isScanning) {
@@ -492,29 +493,29 @@ void MainWindow::scanButtonPress()
 		controlWidget->scanButton->setText(tr("Stop Scan"));
 		controlWidget->scanButton->setChecked(true);
 		scanTimer->start(30);
-		isScanning = true; 
-		
+		isScanning = true;
+
 		//model = new EndoModel();
 
 		/*ofstream myfile("./Data/Scan.csv");
 		myfile << "Cam X," << "Cam Y," << "Cam Z,"
-			<< "Tool X," << "Tool Y," << "Tool Z,"
-			<< "Laser X," << "Laser Y," << "Laser Z" << endl;
+		<< "Tool X," << "Tool Y," << "Tool Z,"
+		<< "Laser X," << "Laser Y," << "Laser Z" << endl;
 		*/
-		
+
 	}
 	else {
 		controlWidget->scanButton->setText(tr("Start Scan"));
 		controlWidget->scanButton->setChecked(false);
 		scanTimer->stop();
 		savePointCloud();
-		isScanning = false; 
+		isScanning = false;
 	}
 }
 
 void MainWindow::savePointCloud()
 {
-	
+
 	QString filename = QFileDialog::getSaveFileName(this, "Save File", "", "PCD (*.pcd) ;; PLY (*.ply)");
 
 	if (filename.isEmpty()) return;
@@ -543,9 +544,9 @@ void MainWindow::scan()
 		if (togglecount % 2 == 0)
 			capture >> distlaserOnImg;
 
-		else 
+		else
 			capture >> distlaserOffImg;
-				
+
 		scancount = 0;
 	}
 
@@ -556,35 +557,35 @@ void MainWindow::scan()
 
 		cv::remap(distlaserOnImg, laserOnImg, map1, map2, cv::INTER_CUBIC);
 		cv::remap(distlaserOffImg, laserOffImg, map1, map2, cv::INTER_CUBIC);
-		framePointsToCloud(laserOffImg, laserOnImg, 1);// , model);
+		framePointsToCloud(laserOffImg, laserOnImg, 3);// , model);
 		cv::imshow("Laser On", laserOnImg);
 		cv::imshow("Laser Off", laserOffImg);
 	}
 }
 
 void MainWindow::updateTracker()
-{	
+{
 	if (playing)
 		update_image();
 
-	 if (trackerInit)
+	if (trackerInit)
 	{
 		trackerChannel->GetTrackedFrame(trackedFrame);
 		repository->SetTransforms(trackedFrame);
 
-		bool isToolMatrixValid = false; 
+		bool isToolMatrixValid = false;
 
 		if (repository->GetTransform(laser2TrackerName, laser2Tracker, &isToolMatrixValid) == PLUS_SUCCESS && isToolMatrixValid) {
 			controlWidget->lightWidgets[1]->setGreen();
 			laserSeen = true;
 		}
-		
+
 		else
 		{
 			controlWidget->lightWidgets[1]->setRed();
 			laserSeen = false;
 		}
-		bool isCameraMatrixValid = false; 
+		bool isCameraMatrixValid = false;
 
 		if (repository->GetTransform(camera2TrackerName, camera2Tracker, &isCameraMatrixValid) == PLUS_SUCCESS && isCameraMatrixValid) {
 			controlWidget->lightWidgets[0]->setGreen();
@@ -599,7 +600,7 @@ void MainWindow::updateTracker()
 
 void MainWindow::getProjectionPosition()		//get projection centre wrt tracker
 {
-	camera.x = imagePlane2Tracker->GetElement(0,3);
+	camera.x = imagePlane2Tracker->GetElement(0, 3);
 	camera.y = imagePlane2Tracker->GetElement(1, 3);
 	camera.z = imagePlane2Tracker->GetElement(2, 3);
 
@@ -609,7 +610,7 @@ void MainWindow::getNormalPosition()
 {
 	normal.x = normal2Tracker->GetElement(0, 3);
 	normal.y = normal2Tracker->GetElement(1, 3);
-	normal.z = normal2Tracker->GetElement(2, 3); 
+	normal.z = normal2Tracker->GetElement(2, 3);
 }
 
 void MainWindow::getOriginPosition()
@@ -683,11 +684,11 @@ void MainWindow::toggleLaser()
 		laserOn = true;
 		controlWidget->laserButton->setText(tr("Laser Off"));
 	}
-	else if (mcuConnected && laserOn){
+	else if (mcuConnected && laserOn) {
 		comPort->write("G32");
 		laserOn = false;
 		controlWidget->laserButton->setText(tr("Laser On"));
-}
+	}
 	else {
 		statusBar()->showMessage(tr("Connect MCU First"), 2000);
 	}
@@ -701,7 +702,7 @@ QImage MainWindow::mat_to_qimage(cv::Mat laserOffImg, QImage::Format format)
 
 //get serial com port object
 void MainWindow::connectMCU() {
-	
+
 	controlWidget->mcuButton->setChecked(false);
 	if (!mcuConnected) {
 		bool okay;
@@ -731,8 +732,8 @@ void MainWindow::connectMCU() {
 void MainWindow::camWebcam(bool checked)
 {
 	if (!trackerInit) {
-		statusBar()->showMessage(tr("Start Tracker First"), 5000); 
-		return; 
+		statusBar()->showMessage(tr("Start Tracker First"), 5000);
+		return;
 	}
 
 	if (checked)
@@ -745,7 +746,7 @@ void MainWindow::camWebcam(bool checked)
 
 		endoCam->setChecked(false);
 
-		createVTKObject(); 
+		createVTKObject();
 		mixer->GetChannel()->GetTrackedFrame(mixerFrame);
 
 		bool isMatrixValid(false);
@@ -769,7 +770,7 @@ void MainWindow::camWebcam(bool checked)
 		endoCam->setCheckable(true);
 	}
 
-	
+
 }
 
 void MainWindow::camEndocam(bool checked)
@@ -798,7 +799,7 @@ void MainWindow::camEndocam(bool checked)
 		repository->SetTransforms(mixerFrame);
 
 		if (repository->GetTransform(PlusTransformName("Endo", "Tracker"), camera2Tracker, &isMatrixValid) == PLUS_SUCCESS && isMatrixValid)
-			statusBar()->showMessage(tr("Endoscope now being used & tracked"), 5000);	
+			statusBar()->showMessage(tr("Endoscope now being used & tracked"), 5000);
 	}
 
 	else
@@ -811,7 +812,7 @@ void MainWindow::camEndocam(bool checked)
 
 		createVTKObject();
 		endoCam->setChecked(false);
-	}	
+	}
 }
 
 cv::Mat MainWindow::subtractLaser(cv::Mat &laserOff, cv::Mat &laserOn)
@@ -876,7 +877,7 @@ vector<cv::Vec4i> MainWindow::detectLaserLine(cv::Mat &laserOff, cv::Mat &laserO
 	return lines;
 }
 
-void MainWindow::framePointsToCloud(cv::Mat &laserOn, cv::Mat &laserOff,  int res)//, EndoModel* model)
+void MainWindow::framePointsToCloud(cv::Mat &laserOn, cv::Mat &laserOff, int res)//, EndoModel* model)
 {
 	//EndoModel* model = new EndoModel(); 
 	//check if able to transform all entities into tracker space
@@ -889,31 +890,39 @@ void MainWindow::framePointsToCloud(cv::Mat &laserOn, cv::Mat &laserOff,  int re
 	//get positions of tools
 	getProjectionPosition();	//get camera centre 
 
-	//laser plane geometry
-	getNormalPosition(); 
+								//laser plane geometry
+	getNormalPosition();
 	getOriginPosition();
 
 	cv::Mat laserLineImg = subtractLaser(laserOff, laserOn);
 	linalg::EndoPt pixel;
+	float render[4]; 
+	float calcPixel[4];
 
-
-	for (int row = VERTICAL_OFFSET; row < laserLineImg.rows - VERTICAL_OFFSET; row++) {
-		for (int col = HORIZONTAL_OFFSET; col < laserLineImg.cols -HORIZONTAL_OFFSET ; col++) {
+	for (int row = VERTICAL_OFFSET; row < laserLineImg.rows - VERTICAL_OFFSET; row+= res) {
+		for (int col = HORIZONTAL_OFFSET; col < laserLineImg.cols - HORIZONTAL_OFFSET; col+= res) {
 			if (laserLineImg.at<uchar>(row, col) == 255) {
 
 				pixel = getPixelPosition(row, col);
 				linalg::EndoLine camLine = linalg::lineFromPoints(camera, pixel);				//in world coordinates
 				linalg::EndoPt intersection = linalg::solveIntersection(normal, origin, camLine);		//in world coordinates
 
-				//validated intersection math using MATLAB and http://www.ambrsoft.com/TrigoCalc/Plan3D/PlaneLineIntersection_.htm
-				//July 2017
+					//validated intersection math using MATLAB and http://www.ambrsoft.com/TrigoCalc/Plan3D/PlaneLineIntersection_.htm
+					//July 2017
 
 				if (intersection.x == 0.0) {
 					qDebug("No intersection found");
 					break;
 				}
 				else {
-					saveData(intersection);
+					//render 3D point intersection -> image plane
+					render[0] = intersection.x; 
+					render[1] = intersection.y; 
+					render[2] = intersection.z; 
+					render[3] = 1; 
+					vtkMatrix4x4::Multiply4x4(tracker2ImagePlane, projection2Point, tracker2Point);
+					tracker2Point->MultiplyPoint(render, calcPixel);
+					saveData(camLine, col, row, normal, origin, calcPixel );
 				}
 			}
 		}
@@ -922,16 +931,19 @@ void MainWindow::framePointsToCloud(cv::Mat &laserOn, cv::Mat &laserOff,  int re
 
 linalg::EndoPt MainWindow::getPixelPosition(int row, int col)		//returns pixel location in tracker space
 {
-	const float pix[4] = { col, row, 1, 1 }; 
+	const float pix[4] = { col, row, 1, 1 };
 	float result[4];
-	linalg::EndoPt pt; 
-	point2Tracker->SetMatrix(point2Projection); 
-	point2Tracker->Concatenate(imagePlane2Tracker); 
-	point2Tracker->MultiplyPoint(pix, result);	//put point pix into projection space
-	pt.x = result[0]; 
-	pt.y = result[1]; 
+	linalg::EndoPt pt;
+	//point2Tracker->SetMatrix(point2Projection);
+	//point2Tracker->Concatenate(imagePlane2Tracker);
+	//point2Tracker->MultiplyPoint(pix, result);	//put point pix into projection space
+
+	vtkMatrix4x4::Multiply4x4(point2Projection, imagePlane2Tracker, pixel2Tracker);
+	pixel2Tracker->MultiplyPoint(pix, result);
+	pt.x = result[0];
+	pt.y = result[1];
 	pt.z = result[2];
-	return pt; 
+	return pt;
 }
 
 void MainWindow::help()
@@ -953,7 +965,7 @@ void MainWindow::about()
 }
 
 
-void MainWindow::saveData(linalg::EndoPt point)
+void MainWindow::saveData(linalg::EndoLine line, int col, int row, linalg::EndoPt normal, linalg::EndoPt origin, float calc[4] )
 {
 	scanNumber++;
 	string name = "./Results/scan" + to_string(scanNumber);
@@ -961,17 +973,35 @@ void MainWindow::saveData(linalg::EndoPt point)
 	ofstream myfile(fullname);
 
 	myfile << "Cam X," << "Cam Y," << "Cam Z,"
-		<< "Tool X," << "Tool Y," << "Tool Z,"
-		<< "Laser X," << "Laser Y," << "Laser Z" << endl;
+		<< "Plane Normal X," << "Plane Normal Y," << "Plane Normal Z,"
+		<< "Laser Origin X," << "Laser Origin Y," << "Laser Origin Z,"
+		"U,"<< "V," << "Int U," << "Int V," << "Int W," << "Int Z" << endl;
 
-	for (int i = 0; i < 3; i++)
-		myfile << camera2Tracker->GetElement(i, 3) << ",";
+		//CAM:
+		myfile << line.a.x << ",";
+		myfile << line.a.y << ",";
+		myfile << line.a.z << ",";
 
-	for (int i = 0; i < 3; i++)
-		myfile << laser2Tracker->GetElement(i, 3) << ",";
+		//Normal:
+		myfile << normal.x << ",";
+		myfile << normal.y << ",";
+		myfile << normal.z << ",";
 
-	myfile << point.x << "," << point.y << "," << point.z << endl;
-	
+		//Origin:
+		myfile << origin.x << ",";
+		myfile << origin.y << ",";
+		myfile << origin.z << ",";
+
+		//Original U and V:
+		myfile << col<< ",";
+		myfile << row << ",";
+		
+		//Calculated U and V:
+		myfile << calc[0] << ",";
+		myfile << calc[1]<< ",";
+
+		myfile << calc[2] << ",";
+		myfile << calc[3] << ",";
 }
 
 bool MainWindow::getTransforms()
@@ -1013,5 +1043,11 @@ bool MainWindow::getTransforms()
 		return false;
 	}
 
-	return true; 
+	if (repository->GetTransform(tracker2ImagePlaneName, tracker2ImagePlane, &isValid) != PLUS_SUCCESS || !isValid)
+	{
+		LOG_ERROR("Unable to successfully transform tracker 2 image plane");
+		return false;
+	}
+
+	return true;
 }

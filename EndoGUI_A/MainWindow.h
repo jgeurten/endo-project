@@ -66,7 +66,7 @@ class vtkRenderer;
 class vtkTexture;
 class vtkImageImport;
 class vtkTrackerTool;
-class ControlWidget; 
+class ControlWidget;
 
 namespace Ui {
 	class MainWindow;
@@ -81,8 +81,8 @@ public:
 	~MainWindow();
 
 private:
-		
-	void createMenus(); 
+
+	void createMenus();
 
 	void createControlDock();
 
@@ -92,14 +92,14 @@ private:
 
 	QMenu			*fileMenu;
 	QMenu			*helpMenu;
-	QMenu			*cameraMenu; 
+	QMenu			*cameraMenu;
 	QAction			*openAct;
 	QAction			*saveAct;
 	QAction			*exitAct;
 	QAction			*aboutAct;
 	QAction			*helpAct;
-	QAction			*webcam; 
-	QAction			*endoCam; 
+	QAction			*webcam;
+	QAction			*endoCam;
 
 	QWidget			*videoWidget;
 	QPushButton		*pushButton;
@@ -109,29 +109,27 @@ private:
 
 	QMediaPlayer	*player;
 	QTimer			*trackTimer;
-	QTimer			*scanTimer; 
-	QDockWidget		*controlDock; 
+	QTimer			*scanTimer;
+	QDockWidget		*controlDock;
 	ControlWidget	*controlWidget;
 	QImage			 image;
 	QPixmap			 pixLabel;
 	QLabel			*videoLabel;
 	QSize			*size;
-	QThread			*streamThread; 
+	QThread			*streamThread;
 
-	EndoModel		*model; 
-	
+	EndoModel		*model;
+
 
 	// Plus members
 	vtkSmartPointer<vtkXMLDataElement>				configRootElement = vtkSmartPointer<vtkXMLDataElement>::New();
 	vtkSmartPointer<vtkPlusDataCollector>			dataCollector = vtkSmartPointer<vtkPlusDataCollector>::New();
 	vtkSmartPointer<vtkPlusTransformRepository>		repository = vtkSmartPointer<vtkPlusTransformRepository>::New();
-
-	vtkPlusDevice									*trackerDevice;
-
+	
 	// Video Devices
 	vtkPlusDevice									*webcamDevice;
 	vtkPlusDevice									*endoDevice;
-
+	vtkPlusDevice									*trackerDevice;
 	//Plus transforms
 	vtkSmartPointer<vtkMatrix4x4>					camera2Image = vtkSmartPointer<vtkMatrix4x4>::New();
 	vtkSmartPointer<vtkMatrix4x4>					laser2Tracker = vtkSmartPointer<vtkMatrix4x4>::New();
@@ -139,9 +137,12 @@ private:
 	vtkSmartPointer<vtkMatrix4x4>					normal2Tracker = vtkSmartPointer<vtkMatrix4x4>::New();
 	vtkSmartPointer<vtkMatrix4x4>					origin2Tracker = vtkSmartPointer<vtkMatrix4x4>::New();
 	vtkSmartPointer<vtkMatrix4x4>					imagePlane2Tracker = vtkSmartPointer<vtkMatrix4x4>::New();
-	vtkSmartPointer<vtkMatrix4x4>					cameraInv = vtkSmartPointer<vtkMatrix4x4>::New(); 
+	vtkSmartPointer<vtkMatrix4x4>					cameraInv = vtkSmartPointer<vtkMatrix4x4>::New();
 	vtkSmartPointer<vtkMatrix4x4>					point2Projection = vtkSmartPointer<vtkMatrix4x4>::New();
-
+	vtkSmartPointer<vtkMatrix4x4>					tracker2ImagePlane = vtkSmartPointer<vtkMatrix4x4>::New(); 
+	vtkSmartPointer<vtkMatrix4x4>					tracker2Point = vtkSmartPointer<vtkMatrix4x4>::New();
+	vtkSmartPointer<vtkMatrix4x4>					projection2Point = vtkSmartPointer<vtkMatrix4x4>::New();
+	vtkSmartPointer<vtkMatrix4x4>					pixel2Tracker = vtkSmartPointer<vtkMatrix4x4>::New();
 
 	vtkTransform									*point2Tracker = vtkTransform::New();
 
@@ -152,8 +153,12 @@ private:
 	PlusTransformName								normal2TrackerName = PlusTransformName("PlaneNormal", "Tracker");
 	PlusTransformName								origin2TrackerName = PlusTransformName("Laser", "PlaneOrigin");
 	PlusTransformName								normal2LaserName = PlusTransformName("PlaneNormal", "Laser");
-	PlusTransformName								imagePlane2TrackerName = PlusTransformName("ImagePlane", "Tracker"); 
+	PlusTransformName								imagePlane2TrackerName = PlusTransformName("ImagePlane", "Tracker");
 	PlusTransformName								point2imagePlaneName = PlusTransformName("Point", "ImagePlane");
+	PlusTransformName								tracker2PointName = PlusTransformName("Tracker", "Point");
+	PlusTransformName								tracker2ImagePlaneName = PlusTransformName("Tracker", "ImagePlane");
+
+
 	// Mixers
 	vtkPlusDevice									*mixerDevice;
 	vtkPlusDevice									*leftMixerDevice;
@@ -207,16 +212,16 @@ private:
 	int					togglecount = 0;
 	int					brightness = 6;
 	int					contrast = 18;
-	ofstream			myfile; 
-	
-	linalg::EndoPt camera, normal, origin; 
+	ofstream			myfile;
+
+	linalg::EndoPt camera, normal, origin;
 	vtkSmartPointer<vtkMatrix3x3>					intrinsicsMat = vtkSmartPointer<vtkMatrix3x3>::New();
 
 	private slots:
 
 	void toggleLaser();
 	void camera_button_clicked();
-	
+
 	void saveButtonPressed();
 	void connectMCU();
 	void startTracker();
@@ -224,9 +229,9 @@ private:
 	void scan();
 	void camWebcam(bool);
 	void camEndocam(bool);
-	void updateTracker(); 
-	void savePointCloud(); 
-	void saveData(linalg::EndoPt point);
+	void updateTracker();
+	void savePointCloud();
+	void saveData(linalg::EndoLine line, int col, int row, linalg::EndoPt normal, linalg::EndoPt origin, float calc[4]);
 	void update_image();
 	void saveVideo();
 	void help();
@@ -236,18 +241,18 @@ private:
 	vector<cv::Vec4i> detectLaserLine(cv::Mat &laserOff, cv::Mat &laserOn);
 	bool getTransforms();
 
-	public:
+public:
 	void getProjectionPosition();
 	void getLaserPosition();
-	void getNormalPosition(); 
-	void getOriginPosition(); 
-	linalg::EndoPt getPixelPosition(int row, int col); 
-	
+	void getNormalPosition();
+	void getOriginPosition();
+	linalg::EndoPt getPixelPosition(int row, int col);
 
-	
+
+
 
 protected:
-	
+
 	void paintEvent(QPaintEvent* event);
 
 	QImage _qimage;
