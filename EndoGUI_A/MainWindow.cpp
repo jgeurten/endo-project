@@ -118,11 +118,6 @@ MainWindow::MainWindow(QWidget *parent)
 	//Parameters from ./config/LogitechC920_Distortion(or Intrinsics)3.xml
 	intrinsics =  (cv::Mat1d(3, 3) << 6.21962708e+002, 0, 3.18246521e+002, 0, 6.19908875e+002, 2.36307892e+002, 0, 0, 1);
 	distortion = (cv::Mat1d(1, 4) << 8.99827331e-002, -2.04057172e-001, -3.27174924e-003, -2.31121108e-003);
-	
-	intrinsicsMat->SetElement(0, 0, 6.21962708e+002);
-	intrinsicsMat->SetElement(0, 2, 3.18246521e+002);
-	intrinsicsMat->SetElement(1,1, 6.19908875e+002);
-	intrinsicsMat->SetElement(1, 2, 2.36307892e+002);
 }
 
 //destructor
@@ -370,6 +365,28 @@ void MainWindow::createVTKObject()
 		cout << "Configuration incorrect for vtkPlusDataCollector." <<endl;
 		return;
 	}	
+
+	//Set point 2 image plane transform explicitly:
+	point2Projection->SetElement(0, 0, 1);
+	point2Projection->SetElement(0, 1, 0);
+	point2Projection->SetElement(0, 2, 0);
+	point2Projection->SetElement(0, 3, -intrinsics.at<uchar>(0, 2));		//-cx
+	point2Projection->SetElement(1, 0, 0);
+	point2Projection->SetElement(1, 1, 1);
+	point2Projection->SetElement(1, 2, 0);
+	point2Projection->SetElement(1, 3, -intrinsics.at<uchar>(1, 2));		//-cy
+	point2Projection->SetElement(2, 0, 0);
+	point2Projection->SetElement(2, 1, 0);
+	point2Projection->SetElement(2, 2, intrinsics.at<uchar>(0, 0));			//fx
+	point2Projection->SetElement(2, 3, 0);
+	point2Projection->SetElement(3, 0, 0);
+	point2Projection->SetElement(3, 1, 0);
+	point2Projection->SetElement(3, 2, 0);
+	point2Projection->SetElement(3, 3, 1);
+
+	//Handle vtk transform point 2 tracker:
+	point2Tracker->PostMultiply();
+
 }
 
 void MainWindow::camera_button_clicked()
@@ -580,7 +597,7 @@ void MainWindow::updateTracker()
 	}
 }
 
-void MainWindow::getCameraPosition()		//x: (0,3), y:(1,3), z:(2,3)
+void MainWindow::getProjectionPosition()		//get projection centre wrt tracker
 {
 	camera.x = imagePlane2Tracker->GetElement(0,3);
 	camera.y = imagePlane2Tracker->GetElement(1, 3);
@@ -877,7 +894,7 @@ void MainWindow::framePointsToCloud(cv::Mat &laserOn, cv::Mat &laserOff,  int re
 	}
 
 	//get positions of tools
-	getCameraPosition();	//get camera centre 
+	getProjectionPosition();	//get camera centre 
 	getLaserPosition();
 
 	//laser plane geometry
@@ -894,8 +911,8 @@ void MainWindow::framePointsToCloud(cv::Mat &laserOn, cv::Mat &laserOff,  int re
 		for (int col = VERTICAL_OFFSET; col < laserLineImg.cols - VERTICAL_OFFSET; col++) {
 			if (laserLineImg.at<uchar>(row, col) == 255) {
 
-				directionVector = getDirVector(row, col);				
-				linalg::EndoLine camLine = linalg::MakeLine(cameraCentre, directionVector);				//in world coordinates
+				directionVector = getPixelPosition(row, col);				
+				linalg::EndoLine camLine = linalg::lineFromPoints(cameraCentre, directionVector);				//in world coordinates
 				linalg::EndoPt intersection = linalg::solveIntersection(normal, origin, camLine);		//in world coordinates
 
 				if (intersection.x == 0.0) {
@@ -910,10 +927,18 @@ void MainWindow::framePointsToCloud(cv::Mat &laserOn, cv::Mat &laserOff,  int re
 	}
 }
 
-linalg::EndoPt MainWindow::getDirVector(int row, int col)
+linalg::EndoPt MainWindow::getPixelPosition(int row, int col)		//returns pixel location in tracker space
 {
-	double x[3] = { col, row, 1.0 };
-	
+	const float pix[4] = { col, row, 1, 1 }; 
+	float result[4];
+	linalg::EndoPt pt; 
+	point2Tracker->SetMatrix(point2Projection); 
+	point2Tracker->Concatenate(imagePlane2Tracker); 
+	point2Tracker->MultiplyPoint(pix, result);	//put point pix into projection space
+	pt.x = result[0]; 
+	pt.y = result[1]; 
+	pt.z = result[2];
+	return pt; 
 }
 
 void MainWindow::help()
@@ -934,18 +959,6 @@ void MainWindow::about()
 			"Jordan Geurten"));
 }
 
-linalg::EndoPt MainWindow::getPixelPosition(int row, int col)
-{
-	//X Y Z = camera2Image(inv)*intrinsics(inv)*pt
-	//vtkMatrix4x4::Invert(camera2Image, cameraInv);	//get inverse of rotational/translational matrix
-	linalg::EndoPt location; 
-	//location.x = (col - intrinsics.at<uchar>(0, 2)) / intrinsics.at<uchar>(0,0); 
-	//location.y = (row - intrinsics.at<uchar>(1, 2)) / intrinsics.at<uchar>(1,1);
-	location.x = (col - 3.18246521e+002) / 6.21962708e+002;
-	location.y = (row - 2.36307892e+002) / 6.19908875e+002;
-	location.z = 1.00; 
-	return location;
-}
 
 void MainWindow::saveData(linalg::EndoPt point)
 {

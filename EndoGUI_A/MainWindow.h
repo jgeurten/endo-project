@@ -36,6 +36,7 @@
 #include <vtkImageImport.h>
 #include <vtk_glew.h>
 #include <vtkMatrix3x3.h>
+#include <vtkTransform.h>
 
 //opencv includes
 #include <opencv2/core/core.hpp>
@@ -139,6 +140,10 @@ private:
 	vtkSmartPointer<vtkMatrix4x4>					origin2Tracker = vtkSmartPointer<vtkMatrix4x4>::New();
 	vtkSmartPointer<vtkMatrix4x4>					imagePlane2Tracker = vtkSmartPointer<vtkMatrix4x4>::New();
 	vtkSmartPointer<vtkMatrix4x4>					cameraInv = vtkSmartPointer<vtkMatrix4x4>::New(); 
+	vtkSmartPointer<vtkMatrix4x4>					point2Projection = vtkSmartPointer<vtkMatrix4x4>::New();
+
+
+	vtkTransform									*point2Tracker = vtkTransform::New();
 
 	// Plus Transform Names
 	PlusTransformName								camera2TrackerName = PlusTransformName("Camera", "Tracker");
@@ -148,7 +153,7 @@ private:
 	PlusTransformName								origin2TrackerName = PlusTransformName("Laser", "PlaneOrigin");
 	PlusTransformName								normal2LaserName = PlusTransformName("PlaneNormal", "Laser");
 	PlusTransformName								imagePlane2TrackerName = PlusTransformName("ImagePlane", "Tracker"); 
-
+	PlusTransformName								point2imagePlaneName = PlusTransformName("Point", "ImagePlane");
 	// Mixers
 	vtkPlusDevice									*mixerDevice;
 	vtkPlusDevice									*leftMixerDevice;
@@ -230,10 +235,9 @@ private:
 	cv::Mat subtractLaser(cv::Mat &laserOff, cv::Mat &laserOn);
 	vector<cv::Vec4i> detectLaserLine(cv::Mat &laserOff, cv::Mat &laserOn);
 	bool getTransforms();
-	linalg::EndoPt getDirVector(int row, int col);
 
 	public:
-	void getCameraPosition();
+	void getProjectionPosition();
 	void getLaserPosition();
 	void getNormalPosition(); 
 	void getOriginPosition(); 
