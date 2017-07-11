@@ -71,7 +71,7 @@ namespace linalg
 		EndoPt b;
 		b.x = (p2.x - p1.x);
 		b.y = (p2.y - p1.y);
-		b.x = (p2.z - p1.z);
+		b.z = (p2.z - p1.z);
 
 		EndoLine line = MakeLine(p1, b);
 		return line;
@@ -98,14 +98,14 @@ namespace linalg
 	   //solve for t in parametric equation --> POI 
 
 		EndoPt result;
-		EndoPt norm = unitVector(normal);
+		
 		EndoPt unitCam = unitVector(camLine.b);
-		double angle = dot(norm, unitCam);
+		double angle = dot(normal, unitCam);
 
 		if (abs(angle) < 1e-6)	//line is parallel to plane
 		{
 			EndoPt diff = MakePoint(camLine.a.x - origin.x, camLine.a.y - origin.y, camLine.a.z - origin.z);
-			if (abs(dot(diff, norm)) < 1e-6)		//line lays on plane
+			if (abs(dot(diff, normal)) < 1e-6)		//line lays on plane
 				result = origin;
 			else
 				result = MakePoint(0.0, 0.0, 0.0);

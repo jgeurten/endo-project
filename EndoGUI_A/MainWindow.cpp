@@ -365,19 +365,19 @@ void MainWindow::createVTKObject()
 		cout << "Configuration incorrect for vtkPlusDataCollector." <<endl;
 		return;
 	}	
-
+	//6.21962708e+002, 0, 3.18246521e+002, 0, 6.19908875e+002, 2.36307892e+002, 0, 0, 1);
 	//Set point 2 image plane transform explicitly:
 	point2Projection->SetElement(0, 0, 1);
 	point2Projection->SetElement(0, 1, 0);
 	point2Projection->SetElement(0, 2, 0);
-	point2Projection->SetElement(0, 3, -intrinsics.at<uchar>(0, 2));		//-cx
+	point2Projection->SetElement(0, 3, -3.18246521e+002);		//-cx
 	point2Projection->SetElement(1, 0, 0);
 	point2Projection->SetElement(1, 1, 1);
 	point2Projection->SetElement(1, 2, 0);
-	point2Projection->SetElement(1, 3, -intrinsics.at<uchar>(1, 2));		//-cy
+	point2Projection->SetElement(1, 3, -2.36307892e+002);		//-cy
 	point2Projection->SetElement(2, 0, 0);
 	point2Projection->SetElement(2, 1, 0);
-	point2Projection->SetElement(2, 2, intrinsics.at<uchar>(0, 0));			//fx
+	point2Projection->SetElement(2, 2, 6.21962708e+002);			//fx
 	point2Projection->SetElement(2, 3, 0);
 	point2Projection->SetElement(3, 0, 0);
 	point2Projection->SetElement(3, 1, 0);
@@ -603,13 +603,6 @@ void MainWindow::getProjectionPosition()		//get projection centre wrt tracker
 	camera.y = imagePlane2Tracker->GetElement(1, 3);
 	camera.z = imagePlane2Tracker->GetElement(2, 3);
 
-}
-
-void MainWindow::getLaserPosition()
-{
-	laser.x = laser2Tracker->GetElement(0, 3);
-	laser.y = laser2Tracker->GetElement(1, 3);
-	laser.z = laser2Tracker->GetElement(2, 3);
 }
 
 void MainWindow::getNormalPosition()
@@ -895,25 +888,25 @@ void MainWindow::framePointsToCloud(cv::Mat &laserOn, cv::Mat &laserOff,  int re
 
 	//get positions of tools
 	getProjectionPosition();	//get camera centre 
-	getLaserPosition();
 
 	//laser plane geometry
 	getNormalPosition(); 
 	getOriginPosition();
 
 	cv::Mat laserLineImg = subtractLaser(laserOff, laserOn);
-	linalg::EndoPt directionVector, cameraCentre;
-	cameraCentre.x = intrinsicsMat->GetElement(0, 2);
-	cameraCentre.y = intrinsicsMat->GetElement(1, 2);
+	linalg::EndoPt pixel;
 
 
-	for (int row = HORIZONTAL_OFFSET; row < laserLineImg.rows - HORIZONTAL_OFFSET; row++) {
-		for (int col = VERTICAL_OFFSET; col < laserLineImg.cols - VERTICAL_OFFSET; col++) {
+	for (int row = VERTICAL_OFFSET; row < laserLineImg.rows - VERTICAL_OFFSET; row++) {
+		for (int col = HORIZONTAL_OFFSET; col < laserLineImg.cols -HORIZONTAL_OFFSET ; col++) {
 			if (laserLineImg.at<uchar>(row, col) == 255) {
 
-				directionVector = getPixelPosition(row, col);				
-				linalg::EndoLine camLine = linalg::lineFromPoints(cameraCentre, directionVector);				//in world coordinates
+				pixel = getPixelPosition(row, col);
+				linalg::EndoLine camLine = linalg::lineFromPoints(camera, pixel);				//in world coordinates
 				linalg::EndoPt intersection = linalg::solveIntersection(normal, origin, camLine);		//in world coordinates
+
+				//validated intersection math using MATLAB and http://www.ambrsoft.com/TrigoCalc/Plan3D/PlaneLineIntersection_.htm
+				//July 2017
 
 				if (intersection.x == 0.0) {
 					qDebug("No intersection found");

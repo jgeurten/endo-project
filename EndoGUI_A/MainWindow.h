@@ -209,7 +209,7 @@ private:
 	int					contrast = 18;
 	ofstream			myfile; 
 	
-	linalg::EndoPt camera, normal, laser, origin; 
+	linalg::EndoPt camera, normal, origin; 
 	vtkSmartPointer<vtkMatrix3x3>					intrinsicsMat = vtkSmartPointer<vtkMatrix3x3>::New();
 
 	private slots:
