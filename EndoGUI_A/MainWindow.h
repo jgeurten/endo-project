@@ -152,7 +152,7 @@ private:
 	PlusTransformName								laser2TrackerName = PlusTransformName("Laser", "Tracker");
 	PlusTransformName								camera2ImageName = PlusTransformName("Camera", "ImagePlane");
 	PlusTransformName								normal2TrackerName = PlusTransformName("PlaneNormal", "Tracker");
-	PlusTransformName								origin2TrackerName = PlusTransformName("Laser", "PlaneOrigin");
+	PlusTransformName								origin2TrackerName = PlusTransformName("PlaneOrigin", "Tracker");
 	PlusTransformName								normal2LaserName = PlusTransformName("PlaneNormal", "Laser");
 	PlusTransformName								imagePlane2TrackerName = PlusTransformName("ImagePlane", "Tracker");
 	PlusTransformName								point2imagePlaneName = PlusTransformName("Point", "ImagePlane");
