@@ -138,11 +138,12 @@ private:
 	vtkSmartPointer<vtkMatrix4x4>					origin2Tracker = vtkSmartPointer<vtkMatrix4x4>::New();
 	vtkSmartPointer<vtkMatrix4x4>					imagePlane2Tracker = vtkSmartPointer<vtkMatrix4x4>::New();
 	vtkSmartPointer<vtkMatrix4x4>					cameraInv = vtkSmartPointer<vtkMatrix4x4>::New();
-	vtkSmartPointer<vtkMatrix4x4>					point2Projection = vtkSmartPointer<vtkMatrix4x4>::New();
+	vtkSmartPointer<vtkMatrix4x4>					point2ImagePlane = vtkSmartPointer<vtkMatrix4x4>::New();
 	vtkSmartPointer<vtkMatrix4x4>					tracker2ImagePlane = vtkSmartPointer<vtkMatrix4x4>::New(); 
 	vtkSmartPointer<vtkMatrix4x4>					tracker2Point = vtkSmartPointer<vtkMatrix4x4>::New();
-	vtkSmartPointer<vtkMatrix4x4>					projection2Point = vtkSmartPointer<vtkMatrix4x4>::New();
+	vtkSmartPointer<vtkMatrix4x4>					imagePlane2Point = vtkSmartPointer<vtkMatrix4x4>::New();
 	vtkSmartPointer<vtkMatrix4x4>					pixel2Tracker = vtkSmartPointer<vtkMatrix4x4>::New();
+	vtkSmartPointer<vtkMatrix4x4>					tracker2Pixel = vtkSmartPointer<vtkMatrix4x4>::New();
 
 	vtkTransform									*point2Tracker = vtkTransform::New();
 
@@ -155,7 +156,7 @@ private:
 	PlusTransformName								normal2LaserName = PlusTransformName("PlaneNormal", "Laser");
 	PlusTransformName								imagePlane2TrackerName = PlusTransformName("ImagePlane", "Tracker");
 	PlusTransformName								point2imagePlaneName = PlusTransformName("Point", "ImagePlane");
-	PlusTransformName								tracker2PointName = PlusTransformName("Tracker", "Point");
+	PlusTransformName								tracker2PixelName = PlusTransformName("Tracker", "Pixel");
 	PlusTransformName								tracker2ImagePlaneName = PlusTransformName("Tracker", "ImagePlane");
 
 
@@ -231,7 +232,7 @@ private:
 	void camEndocam(bool);
 	void updateTracker();
 	void savePointCloud();
-	void saveData(linalg::EndoLine line, int col, int row, linalg::EndoPt normal, linalg::EndoPt origin, float calc[4]);
+	void saveData(linalg::EndoLine line, int col, int row, linalg::EndoPt normal, linalg::EndoPt origin, float calc[4], linalg::EndoPt inter);
 	void update_image();
 	void saveVideo();
 	void help();
@@ -247,6 +248,8 @@ public:
 	void getNormalPosition();
 	void getOriginPosition();
 	linalg::EndoPt getPixelPosition(int row, int col);
+	linalg::EndoPt MainWindow::getNewPixelPosition(int row, int col);		//returns pixel location in tracker space
+	linalg::EndoPt MainWindow::getNewestPixelPosition(int row, int col);		//returns pixel location in tracker space
 
 
 

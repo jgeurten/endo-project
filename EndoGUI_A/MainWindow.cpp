@@ -367,27 +367,28 @@ void MainWindow::createVTKObject()
 	}
 	//6.21962708e+002, 0, 3.18246521e+002, 0, 6.19908875e+002, 2.36307892e+002, 0, 0, 1);
 	//Set point 2 image plane transform explicitly:
-	point2Projection->SetElement(0, 0, 1);
-	point2Projection->SetElement(0, 1, 0);
-	point2Projection->SetElement(0, 2, 0);
-	point2Projection->SetElement(0, 3, -3.18246521e+002);		//-cx
-	point2Projection->SetElement(1, 0, 0);
-	point2Projection->SetElement(1, 1, 1);
-	point2Projection->SetElement(1, 2, 0);
-	point2Projection->SetElement(1, 3, -2.36307892e+002);		//-cy
-	point2Projection->SetElement(2, 0, 0);
-	point2Projection->SetElement(2, 1, 0);
-	point2Projection->SetElement(2, 2, 6.21962708e+002);			//fx
-	point2Projection->SetElement(2, 3, 0);
-	point2Projection->SetElement(3, 0, 0);
-	point2Projection->SetElement(3, 1, 0);
-	point2Projection->SetElement(3, 2, 0);
-	point2Projection->SetElement(3, 3, 1);
+	
+	point2ImagePlane->SetElement(0, 0, 1);
+	point2ImagePlane->SetElement(0, 1, 0);
+	point2ImagePlane->SetElement(0, 2, 0);
+	point2ImagePlane->SetElement(0, 3, -3.18246521e+002);		//-cx
+	point2ImagePlane->SetElement(1, 0, 0);
+	point2ImagePlane->SetElement(1, 1, 1);
+	point2ImagePlane->SetElement(1, 2, 0);
+	point2ImagePlane->SetElement(1, 3, -2.36307892e+002);		//-cy
+	point2ImagePlane->SetElement(2, 0, 0);
+	point2ImagePlane->SetElement(2, 1, 0);
+	point2ImagePlane->SetElement(2, 2, 6.21962708e+002);			//fx
+	point2ImagePlane->SetElement(2, 3, 0);
+	point2ImagePlane->SetElement(3, 0, 0);
+	point2ImagePlane->SetElement(3, 1, 0);
+	point2ImagePlane->SetElement(3, 2, 0);
+	point2ImagePlane->SetElement(3, 3, 1);
 
-	vtkMatrix4x4::Invert(point2Projection, projection2Point);	//camera plane to pixel
+	vtkMatrix4x4::Invert(point2ImagePlane, imagePlane2Point);	//camera plane to pixel
 	//Handle vtk transform point 2 tracker:
 	point2Tracker->PostMultiply();
-
+	
 }
 
 void MainWindow::camera_button_clicked()
@@ -887,15 +888,14 @@ void MainWindow::framePointsToCloud(cv::Mat &laserOn, cv::Mat &laserOff, int res
 		return;
 	}
 
-	//get positions of tools
-	getProjectionPosition();	//get camera centre 
-
-								//laser plane geometry
+	//get camera centre 
+	getProjectionPosition();	
+	//laser plane geometry								
 	getNormalPosition();
 	getOriginPosition();
 
 	cv::Mat laserLineImg = subtractLaser(laserOff, laserOn);
-	linalg::EndoPt pixel;
+	linalg::EndoPt pixel, newPixel, newestPixel;
 	float render[4]; 
 	float calcPixel[4];
 
@@ -904,6 +904,20 @@ void MainWindow::framePointsToCloud(cv::Mat &laserOn, cv::Mat &laserOff, int res
 			if (laserLineImg.at<uchar>(row, col) == 255) {
 
 				pixel = getPixelPosition(row, col);
+				newPixel = getNewPixelPosition(row, col);
+
+				if (col > 318)	//cx
+					newestPixel.x = camera.x + col;
+				else
+					newestPixel.x = camera.x - col; 
+
+				if (row > 236)	//cy
+					newestPixel.y = camera.y + row;
+				else
+					newestPixel.y = camera.y - row; 
+
+				newestPixel.z = camera.z + 621; //focus
+
 				linalg::EndoLine camLine = linalg::lineFromPoints(camera, pixel);				//in world coordinates
 				linalg::EndoPt intersection = linalg::solveIntersection(normal, origin, camLine);		//in world coordinates
 
@@ -915,14 +929,14 @@ void MainWindow::framePointsToCloud(cv::Mat &laserOn, cv::Mat &laserOff, int res
 					break;
 				}
 				else {
-					//render 3D point intersection -> image plane
+					//render 3D point intersection -> image plane space
 					render[0] = intersection.x; 
 					render[1] = intersection.y; 
 					render[2] = intersection.z; 
 					render[3] = 1; 
-					vtkMatrix4x4::Multiply4x4(tracker2ImagePlane, projection2Point, tracker2Point);
+					vtkMatrix4x4::Multiply4x4(tracker2ImagePlane, imagePlane2Point, tracker2Point);
 					tracker2Point->MultiplyPoint(render, calcPixel);
-					saveData(camLine, col, row, normal, origin, calcPixel );
+					saveData(camLine, col, row, normal, origin, calcPixel, intersection);
 				}
 			}
 		}
@@ -934,17 +948,39 @@ linalg::EndoPt MainWindow::getPixelPosition(int row, int col)		//returns pixel l
 	const float pix[4] = { col, row, 1, 1 };
 	float result[4];
 	linalg::EndoPt pt;
-	//point2Tracker->SetMatrix(point2Projection);
+	//point2Tracker->SetMatrix(point2ImagePlane);
 	//point2Tracker->Concatenate(imagePlane2Tracker);
 	//point2Tracker->MultiplyPoint(pix, result);	//put point pix into projection space
 
-	vtkMatrix4x4::Multiply4x4(point2Projection, imagePlane2Tracker, pixel2Tracker);
+	vtkMatrix4x4::Multiply4x4(point2ImagePlane,imagePlane2Tracker,   pixel2Tracker);
 	pixel2Tracker->MultiplyPoint(pix, result);
 	pt.x = result[0];
 	pt.y = result[1];
 	pt.z = result[2];
 	return pt;
 }
+
+linalg::EndoPt MainWindow::getNewPixelPosition(int row, int col)		//returns pixel location in tracker space
+{
+	const float pix[4] = { col, row, 1, 1 };
+	float result[4];
+	linalg::EndoPt pt;
+	bool isValid(false);
+
+	if (repository->GetTransform(tracker2PixelName, tracker2Pixel, &isValid) != PLUS_SUCCESS || !isValid)
+	{
+		LOG_ERROR("Unable to successfully transform tracker 2 image plane");
+		return linalg::MakePoint(0,0,0);
+	}
+	
+	tracker2Pixel->MultiplyPoint(pix, result);
+
+	pt.x = result[0];
+	pt.y = result[1];
+	pt.z = result[2];
+	return pt;
+}
+
 
 void MainWindow::help()
 {
@@ -965,7 +1001,7 @@ void MainWindow::about()
 }
 
 
-void MainWindow::saveData(linalg::EndoLine line, int col, int row, linalg::EndoPt normal, linalg::EndoPt origin, float calc[4] )
+void MainWindow::saveData(linalg::EndoLine line, int col, int row, linalg::EndoPt normal, linalg::EndoPt origin, float calc[4], linalg::EndoPt inter)
 {
 	scanNumber++;
 	string name = "./Results/scan" + to_string(scanNumber);
@@ -975,7 +1011,8 @@ void MainWindow::saveData(linalg::EndoLine line, int col, int row, linalg::EndoP
 	myfile << "Cam X," << "Cam Y," << "Cam Z,"
 		<< "Plane Normal X," << "Plane Normal Y," << "Plane Normal Z,"
 		<< "Laser Origin X," << "Laser Origin Y," << "Laser Origin Z,"
-		"U,"<< "V," << "Int U," << "Int V," << "Int W," << "Int Z" << endl;
+		<< "U," << "V," << "Calc U," << "Calc V," << "Calc W," << "Calc Z,"
+		<< "Intersection X," << "Y," << "Z" << endl;
 
 		//CAM:
 		myfile << line.a.x << ",";
@@ -1002,6 +1039,11 @@ void MainWindow::saveData(linalg::EndoLine line, int col, int row, linalg::EndoP
 
 		myfile << calc[2] << ",";
 		myfile << calc[3] << ",";
+
+		//intersection:
+		myfile << inter.x << ",";
+		myfile << inter.y << ",";
+		myfile << inter.z << ",";
 }
 
 bool MainWindow::getTransforms()
