@@ -837,7 +837,7 @@ void mainWidget::updateTrackerInfo()
 
 			if (ovrvisionPro->isChecked() == true)
 			{
-				cv::Mat leftImage;
+				cv::Mat		;
 				cv::Mat rightImage;
 
 				// Get frames

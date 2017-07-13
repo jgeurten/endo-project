@@ -103,8 +103,8 @@ MainWindow::MainWindow(QWidget *parent)
 	laserOn = false;
 	trackerInit = false;
 	isScanning = false;
-	laserSeen = false;
-	cameraSeen = false;
+	
+	trackReady = false;
 	//cv::VideoCapture capture = new cv::VideoCapture();
 
 	createMenus();
@@ -425,12 +425,36 @@ void MainWindow::camera_button_clicked()
 		playing = false;
 		trackTimer->stop();
 	}
+}
 
+
+void MainWindow::camera_button_clicked()
+{
 	if (!playing)
 	{
-
 		if (!trackerInit)
-			trackTimer->start(40);
+			statusBar()->showMessage(tr("Connect Tracker First"), 5000);
+		else
+		{
+			//Frame:
+			mixer->GetChannel()->GetTrackedFrame(mixerFrame);
+			//Images:
+			vtkImageData *image = mixerFrame.GetImageData()->GetImage();
+			int dimensions[3];
+			image->GetDimensions(dimensions);
+
+			distStreamImg = cv::Mat(dimensions[1], dimensions[0], CV_8UC3, image->GetScalarPointer(0, 0, 0));
+			cv::undistort(distStreamImg, streamImg, intrinsics, distortion);
+			cv::initUndistortRectifyMap(intrinsics, distortion, cv::Mat(), intrinsics, cv::Size(distStreamImg.cols, distStreamImg.rows),
+				CV_32FC1, map1, map2);
+		}
+	}
+	else
+	{
+		controlWidget->streamButton->setText(tr("Stream Video"));
+		statusBar()->showMessage(tr("Ready"), 7000);
+		playing = false;
+		trackTimer->stop();
 	}
 }
 
@@ -573,29 +597,62 @@ void MainWindow::updateTracker()
 	{
 		trackerChannel->GetTrackedFrame(trackedFrame);
 		repository->SetTransforms(trackedFrame);
+		
+		//check if laser and camera are seen first to set lights. If laser or camera are not seen, will break out at normal2tracker
+		//origin2tracker or imageplane2 tracker. Therefore, trackReady --> false
+
+		bool isValid(false);
+		trackerChannel->GetTrackedFrame(trackedFrame);
+		repository->SetTransforms(trackedFrame);
 
 		bool isToolMatrixValid = false;
-
-		if (repository->GetTransform(laser2TrackerName, laser2Tracker, &isToolMatrixValid) == PLUS_SUCCESS && isToolMatrixValid) {
-			controlWidget->lightWidgets[1]->setGreen();
-			laserSeen = true;
-		}
-
-		else
-		{
-			controlWidget->lightWidgets[1]->setRed();
-			laserSeen = false;
-		}
 		bool isCameraMatrixValid = false;
 
-		if (repository->GetTransform(camera2TrackerName, camera2Tracker, &isCameraMatrixValid) == PLUS_SUCCESS && isCameraMatrixValid) {
+		if (repository->GetTransform(laser2TrackerName, laser2Tracker, &isToolMatrixValid) == PLUS_SUCCESS && isToolMatrixValid) 
+			controlWidget->lightWidgets[1]->setGreen();
+		else
+			controlWidget->lightWidgets[1]->setRed();
+		
+		if (repository->GetTransform(camera2TrackerName, camera2Tracker, &isCameraMatrixValid) == PLUS_SUCCESS && isCameraMatrixValid) 
 			controlWidget->lightWidgets[0]->setGreen();
-			cameraSeen = true;
-		}
-		else {
+			
+		else 
 			controlWidget->lightWidgets[0]->setRed();
-			cameraSeen = false;
+			
+
+		if (repository->GetTransform(normal2TrackerName, normal2Tracker, &isValid) != PLUS_SUCCESS || !isValid) {
+			LOG_ERROR("Unable to successfully transform plane normal to tracker");
+			trackReady = false; 
+			return; 
 		}
+		if (repository->GetTransform(origin2TrackerName, origin2Tracker, &isValid) != PLUS_SUCCESS || !isValid) {
+			LOG_ERROR("Unable to successfully transform plane origin to tracker");
+			trackReady = false;
+			return;
+		}
+
+		if (repository->GetTransform(imagePlane2TrackerName, imagePlane2Tracker, &isValid) != PLUS_SUCCESS || !isValid)
+		{
+			LOG_ERROR("Unable to successfully transform image plane to tracker");
+			trackReady = false;
+			return;
+		}
+
+		if (repository->GetTransform(camera2ImageName, camera2Image, &isValid) != PLUS_SUCCESS || !isValid)
+		{
+			LOG_ERROR("Unable to successfully transform camera to image");
+			trackReady = false;
+			return;
+		}
+
+		if (repository->GetTransform(tracker2ImagePlaneName, tracker2ImagePlane, &isValid) != PLUS_SUCCESS || !isValid)
+		{
+			LOG_ERROR("Unable to successfully transform tracker 2 image plane");
+			trackReady = false;
+			return;
+		}
+
+		trackReady = true;
 	}
 }
 
@@ -882,9 +939,9 @@ void MainWindow::framePointsToCloud(cv::Mat &laserOn, cv::Mat &laserOff, int res
 {
 	//EndoModel* model = new EndoModel(); 
 	//check if able to transform all entities into tracker space
-	if (!getTransforms())
+	if (!trackReady)
 	{
-		LOG_ERROR("Unable to successfully transform one or many transforms");
+		LOG_ERROR("Unable to transform one or many translations");
 		return;
 	}
 
@@ -1046,50 +1103,3 @@ void MainWindow::saveData(linalg::EndoLine line, int col, int row, linalg::EndoP
 		myfile << inter.z << ",";
 }
 
-bool MainWindow::getTransforms()
-{
-	bool isValid(false);
-	trackerChannel->GetTrackedFrame(trackedFrame);
-	repository->SetTransforms(trackedFrame);
-
-	if (repository->GetTransform(normal2TrackerName, normal2Tracker, &isValid) != PLUS_SUCCESS || !isValid) {
-		LOG_ERROR("Unable to successfully transform plane normal to tracker");
-		return false;
-	}
-	if (repository->GetTransform(origin2TrackerName, origin2Tracker, &isValid) != PLUS_SUCCESS || !isValid) {
-		LOG_ERROR("Unable to successfully transform plane origin to tracker");
-		return false;
-	}
-
-	if (repository->GetTransform(imagePlane2TrackerName, imagePlane2Tracker, &isValid) != PLUS_SUCCESS || !isValid)
-	{
-		LOG_ERROR("Unable to successfully transform image plane to tracker");
-		return false;
-	}
-
-	if (repository->GetTransform(camera2TrackerName, camera2Tracker, &isValid) != PLUS_SUCCESS || !isValid)
-	{
-		LOG_ERROR("Unable to successfully transform camera to tracker");
-		return false;
-	}
-
-	if (repository->GetTransform(laser2TrackerName, laser2Tracker, &isValid) != PLUS_SUCCESS || !isValid)
-	{
-		LOG_ERROR("Unable to successfully transform laser to tracker");
-		return false;
-	}
-
-	if (repository->GetTransform(camera2ImageName, camera2Image, &isValid) != PLUS_SUCCESS || !isValid)
-	{
-		LOG_ERROR("Unable to successfully transform camera to image");
-		return false;
-	}
-
-	if (repository->GetTransform(tracker2ImagePlaneName, tracker2ImagePlane, &isValid) != PLUS_SUCCESS || !isValid)
-	{
-		LOG_ERROR("Unable to successfully transform tracker 2 image plane");
-		return false;
-	}
-
-	return true;
-}

@@ -192,7 +192,7 @@ private:
 	QImage mat_to_qimage(cv::Mat frame, QImage::Format format);
 
 	int					framePd;	// period of frame rate
-	bool				isReadyToSave, isSaving, playing, mcuConnected, laserOn, trackerInit, isScanning, cameraSeen, laserSeen;
+	bool				trackReady, isReadyToSave, isSaving, playing, mcuConnected, laserOn, trackerInit, isScanning;
 
 	vector<cv::Vec4i>	lines;
 	cv::Point			point1, point2;
@@ -240,11 +240,10 @@ private:
 	void framePointsToCloud(cv::Mat &laserOff, cv::Mat &laserOn, int res);//, EndoModel* model);
 	cv::Mat subtractLaser(cv::Mat &laserOff, cv::Mat &laserOn);
 	vector<cv::Vec4i> detectLaserLine(cv::Mat &laserOff, cv::Mat &laserOn);
-	bool getTransforms();
 
 public:
 	void getProjectionPosition();
-	void getLaserPosition();
+
 	void getNormalPosition();
 	void getOriginPosition();
 	linalg::EndoPt getPixelPosition(int row, int col);
