@@ -404,12 +404,12 @@ void MainWindow::camera_button_clicked()
 			//Frame:
 			mixer->GetChannel()->GetTrackedFrame(mixerFrame);
 			//Images:
-			vtkImageData *image = mixerFrame.GetImageData()->GetImage();
+			vtkImageData *_image = mixerFrame.GetImageData()->GetImage();
 			
-			image->GetDimensions(dimensions);
+			_image->GetDimensions(dimensions);
 
 			//Copy vtk image to cv::mat data type
-			distStreamImg = cv::Mat(dimensions[1], dimensions[0], CV_8UC3, image->GetScalarPointer(0, 0, 0));
+			distStreamImg = cv::Mat(dimensions[1], dimensions[0], CV_8UC3, _image->GetScalarPointer(0, 0, 0));
 
 			//Undistort the video stream. Save undistortion map1, map2 to later use in remap (much more efficient)
 			cv::undistort(distStreamImg, streamImg, intrinsics, distortion);
@@ -454,25 +454,6 @@ void MainWindow::update_image()
 	cv::Size s = streamImg.size();
 
 	image = QImage((const unsigned char*)(streamImg.data), streamImg.cols, streamImg.rows, streamImg.cols*streamImg.channels(), QImage::Format_RGB888).rgbSwapped();
-
-	switch (streamImg.type())	//CONVERT MAT TO QIMAGE
-	{
-	case CV_8UC4:
-	{
-		image = QImage((const unsigned char*)(streamImg.data), streamImg.cols, streamImg.rows, streamImg.cols*streamImg.channels(), QImage::Format_ARGB32);
-		break;
-	}
-
-	case CV_8UC3:
-	{
-		image = QImage((const unsigned char*)(streamImg.data), streamImg.cols, streamImg.rows, streamImg.cols*streamImg.channels(), QImage::Format_RGB888).rgbSwapped();
-		break;
-	}
-
-	default:
-		qWarning() << "Type Not Handled";
-		break;
-	}
 
 	if (isSaving)
 		saveVideo();
@@ -695,14 +676,8 @@ void MainWindow::saveButtonPressed()
 
 void MainWindow::saveVideo()
 {
-	if (capture.isOpened()) {
-		//capture.grab();
-		capture >> savingMat;
-		gVideoWrite.write(savingMat);
-		qDebug() << "Save Video Thread";
-	}
-	else
-		statusBar()->showMessage(tr("Unable to open video stream"), 2000);
+	gVideoWrite.write(streamImg);
+	qDebug() << "Save Video Thread";
 }
 
 void MainWindow::paintEvent(QPaintEvent*)
