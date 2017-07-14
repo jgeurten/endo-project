@@ -214,8 +214,10 @@ private:
 	int					togglecount = 0;
 	int					brightness = 6;
 	int					contrast = 18;
+	int					prevBrightness = 6;
+	int					prevContrast = 18;
 	ofstream			myfile;
-
+	double				currentTime, prevTime; 
 	linalg::EndoPt camera, normal, origin;
 	vtkSmartPointer<vtkMatrix3x3>					intrinsicsMat = vtkSmartPointer<vtkMatrix3x3>::New();
 
@@ -233,7 +235,7 @@ private:
 	void camEndocam(bool);
 	void updateTracker();
 	void savePointCloud();
-	void saveData(linalg::EndoLine line, int col, int row, linalg::EndoPt normal, linalg::EndoPt origin, float calc[4], linalg::EndoPt inter);
+	void saveData(linalg::EndoPt camera, linalg::EndoPt pixel, int col, int row, linalg::EndoPt normal, linalg::EndoPt origin, float calc[4], linalg::EndoPt inter);
 	void update_image();
 	void saveVideo();
 	void help();
@@ -241,7 +243,8 @@ private:
 	void framePointsToCloud(cv::Mat &laserOff, cv::Mat &laserOn, int res);//, EndoModel* model);
 	cv::Mat subtractLaser(cv::Mat &laserOff, cv::Mat &laserOn);
 	vector<cv::Vec4i> detectLaserLine(cv::Mat &laserOff, cv::Mat &laserOn);
-
+	cv::Mat changeBCImage(int alpha, int beta);
+	cv::Mat getImg();
 public:
 	void getProjectionPosition();
 

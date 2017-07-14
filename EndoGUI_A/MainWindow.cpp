@@ -6,6 +6,7 @@
 #include "defines.h"
 #include <EndoModel.h>
 #include <LinAlg.h>
+#include "ScanClass.h"
 
 
 //OpenCv includes
@@ -91,6 +92,7 @@
 using namespace std;
 
 class ControlWidget;
+class ScanClass;
 
 MainWindow::MainWindow(QWidget *parent)
 	:QMainWindow(parent)
@@ -118,6 +120,9 @@ MainWindow::MainWindow(QWidget *parent)
 	//Parameters from ./config/LogitechC920_Distortion(or Intrinsics)3.xml
 	intrinsics = (cv::Mat1d(3, 3) << 6.21962708e+002, 0, 3.18246521e+002, 0, 6.19908875e+002, 2.36307892e+002, 0, 0, 1);
 	distortion = (cv::Mat1d(1, 4) << 8.99827331e-002, -2.04057172e-001, -3.27174924e-003, -2.31121108e-003);
+
+	QThread *thread1 = new QThread; // First thread
+	QThread *thread2 = new QThread; // Second thread
 }
 
 //destructor
@@ -226,7 +231,7 @@ void MainWindow::startTracker()
 		}
 		if (webcam->isChecked())
 		{
-			// Get Ovrvision Pro device
+			// Get webcam device
 			if (dataCollector->GetDevice(webcamDevice, "VideoDevice") != PLUS_SUCCESS)
 			{
 				qDebug() << "Unable to locate the device with ID = \"VideoDevice\". Check config file.";
@@ -239,8 +244,15 @@ void MainWindow::startTracker()
 				qDebug() << "Unable to locate the device with ID = \"TrackedVideoDevice\". Check config file.";
 				return;
 			}
+
 			webcamVideo = dynamic_cast<vtkPlusMmfVideoSource *>(webcamDevice);
 			mixer = dynamic_cast<vtkPlusVirtualMixer *>(mixerDevice);
+
+			if (webcamVideo->GetOutputChannelByName(videoChannel, "VideoStream") != PLUS_SUCCESS)
+			{
+				LOG_ERROR("Unable to locate video channel with name 'VideoStream'");
+				return;
+			}
 		}
 
 		if (endoCam->isChecked())
@@ -260,6 +272,12 @@ void MainWindow::startTracker()
 			}
 			endoVideo = dynamic_cast<vtkPlusMmfVideoSource *>(endoDevice);
 			mixer = dynamic_cast<vtkPlusVirtualMixer *>(mixerDevice);
+
+			if (endoVideo->GetOutputChannelByName(videoChannel, "VideoStream") != PLUS_SUCCESS)
+			{
+				LOG_ERROR("Unable to locate video channel with name = 'VideoStream");
+				return;
+			}
 		}
 
 		ndiTracker = dynamic_cast<vtkPlusNDITracker *>(trackerDevice);
@@ -393,6 +411,7 @@ void MainWindow::createVTKObject()
 
 void MainWindow::camera_button_clicked()
 {
+	controlWidget->streamButton->setChecked(false);
 	if (!playing)
 	{
 		if (!trackerInit) {
@@ -410,7 +429,8 @@ void MainWindow::camera_button_clicked()
 
 			//Copy vtk image to cv::mat data type
 			distStreamImg = cv::Mat(dimensions[1], dimensions[0], CV_8UC3, _image->GetScalarPointer(0, 0, 0));
-
+			cv::flip(distStreamImg, distStreamImg, -1);
+			cv::flip(distStreamImg, distStreamImg, 1);		//mirror image
 			//Undistort the video stream. Save undistortion map1, map2 to later use in remap (much more efficient)
 			cv::undistort(distStreamImg, streamImg, intrinsics, distortion);
 			cv::initUndistortRectifyMap(intrinsics, distortion, cv::Mat(), intrinsics, cv::Size(distStreamImg.cols, distStreamImg.rows),
@@ -418,6 +438,7 @@ void MainWindow::camera_button_clicked()
 
 			controlWidget->streamButton->setText(tr("Stop Stream"));
 			playing = true;
+			controlWidget->streamButton->setChecked(true);
 		}
 	}
 	else
@@ -432,28 +453,28 @@ void MainWindow::camera_button_clicked()
 void MainWindow::update_image()
 {
 	//Need to figure out how to control brightness and contrast without opencv
-/*
+
 	cv::namedWindow("Control", CV_WINDOW_NORMAL);
 	cvCreateTrackbar("Brightness", "Control", &brightness, 100);
 	cvCreateTrackbar("Contrast", "Control", &contrast, 100);
-	capture.set(CV_CAP_PROP_CONTRAST, (double)contrast);
-	capture.set(CV_CAP_PROP_BRIGHTNESS, (double)brightness);
 
-	capture >> distStreamImg;
-	cv::remap(distStreamImg, streamImg, map1, map2, cv::INTER_CUBIC);
-*/
 	//Get image from tracked frame:
 	mixer->GetChannel()->GetTrackedFrame(mixerFrame);
 	vtkImageData *vtkImage = mixerFrame.GetImageData()->GetImage();
 	vtkImage->GetDimensions(dimensions);
 
 	distStreamImg = cv::Mat(dimensions[1], dimensions[0], CV_8UC3, vtkImage->GetScalarPointer(0, 0, 0));
+	cv::flip(distStreamImg, distStreamImg, -1); //flip mat 180 degrees
+	cv::flip(distStreamImg, distStreamImg, 1); //mirror image
 
+	//distStreamImg = changeBCImage(contrast, brightness);
+	
+	cv::Mat testimg; 
+	
 	//Remap distorted image to undistorted:
-	cv::remap(distStreamImg, streamImg, map1, map2, cv::INTER_CUBIC);
-	cv::Size s = streamImg.size();
-
-	image = QImage((const unsigned char*)(streamImg.data), streamImg.cols, streamImg.rows, streamImg.cols*streamImg.channels(), QImage::Format_RGB888).rgbSwapped();
+	cv::remap(distStreamImg, testimg, map1, map2, cv::INTER_CUBIC);
+	testimg.convertTo(streamImg, -1, brightness, contrast);
+	image = QImage((const unsigned char*)(streamImg.data), streamImg.cols, streamImg.rows, streamImg.cols*streamImg.channels(), QImage::Format_RGB888);// .rgbSwapped();
 
 	if (isSaving)
 		saveVideo();
@@ -462,6 +483,20 @@ void MainWindow::update_image()
 
 }
 
+cv::Mat MainWindow::changeBCImage(int alpha, int beta)	//alpha: contrast, beta: brightness
+{
+	cv::Mat newImage = cv::Mat::zeros(distStreamImg.size(), distStreamImg.type());
+
+	for (int y = 0; y < dimensions[1]; y++) {
+		for (int x = 0; x < dimensions[0]; x++) {
+			for (int c = 0; c < 3; c++) {
+				newImage.at<cv::Vec3b>(y, x)[c] =
+					cv::saturate_cast<uchar>(alpha*(distStreamImg.at<cv::Vec3b>(y, x)[c]) + beta);
+			}
+		}
+	}
+	return newImage;
+}
 void MainWindow::scanButtonPress()
 {
 	if (!mcuConnected)
@@ -477,15 +512,7 @@ void MainWindow::scanButtonPress()
 		controlWidget->scanButton->setChecked(true);
 		scanTimer->start(30);
 		isScanning = true;
-
-		//model = new EndoModel();
-
-		/*ofstream myfile("./Data/Scan.csv");
-		myfile << "Cam X," << "Cam Y," << "Cam Z,"
-		<< "Tool X," << "Tool Y," << "Tool Z,"
-		<< "Laser X," << "Laser Y," << "Laser Z" << endl;
-		*/
-
+		
 	}
 	else {
 		controlWidget->scanButton->setText(tr("Start Scan"));
@@ -516,34 +543,38 @@ void MainWindow::savePointCloud()
 
 void MainWindow::scan()
 {
-	scancount++;
-	if (scancount == 1) {
+	currentTime = GetTickCount();			//returns time in milliseconds
+	if (currentTime - prevTime > 1000) {
+		if (togglecount % 2 == 0) {
+			laserOnImg = streamImg;//getImg();
+			cv::imshow("Laser On", laserOnImg);
+		}
+		else {
+			laserOffImg = streamImg; //getImg();
+			cv::imshow("Laser Off", laserOffImg);
+		}
 		toggleLaser();
 		togglecount++;
+		prevTime = currentTime;
+		if (togglecount == 1)
+			return;
+
+		if (togglecount % 2 == 0) 
+			framePointsToCloud(laserOffImg, laserOnImg, 3);// , model);
 	}
+}
 
-	else if (scancount == 7) {			//effectively delayed 7*30ms = 210ms
+cv::Mat MainWindow::getImg()
+{
+	
+	mixer->GetChannel()->GetTrackedFrame(mixerFrame);
+	vtkImageData *vtkImage = mixerFrame.GetImageData()->GetImage();
+	vtkImage->GetDimensions(dimensions);
 
-		if (togglecount % 2 == 0)
-			capture >> distlaserOnImg;
-
-		else
-			capture >> distlaserOffImg;
-
-		scancount = 0;
-	}
-
-	if (distlaserOnImg.empty() || distlaserOffImg.empty())	//only true for toggle count = 1
-		return;
-
-	if (togglecount % 2 == 0) {	//have both laser on and off successive images
-
-		cv::remap(distlaserOnImg, laserOnImg, map1, map2, cv::INTER_CUBIC);
-		cv::remap(distlaserOffImg, laserOffImg, map1, map2, cv::INTER_CUBIC);
-		framePointsToCloud(laserOffImg, laserOnImg, 3);// , model);
-		cv::imshow("Laser On", laserOnImg);
-		cv::imshow("Laser Off", laserOffImg);
-	}
+	cv::Mat img = cv::Mat(dimensions[1], dimensions[0], CV_8UC3, vtkImage->GetScalarPointer(0, 0, 0));
+	cv::flip(img, img, -1); //flip mat 180 degrees
+	cv::flip(img, img, 1); //mirror image
+	return img;
 }
 
 void MainWindow::updateTracker()
@@ -741,6 +772,8 @@ void MainWindow::connectMCU() {
 
 void MainWindow::camWebcam(bool checked)
 {
+	webcam->setChecked(false);
+
 	if (!trackerInit) {
 		statusBar()->showMessage(tr("Start Tracker First"), 5000);
 		return;
@@ -754,8 +787,6 @@ void MainWindow::camWebcam(bool checked)
 
 		dataCollector = vtkSmartPointer<vtkPlusDataCollector>::New();
 
-		endoCam->setChecked(false);
-
 		createVTKObject();
 		mixer->GetChannel()->GetTrackedFrame(mixerFrame);
 
@@ -765,6 +796,8 @@ void MainWindow::camWebcam(bool checked)
 		{
 			statusBar()->showMessage(tr("Webcam now being used & tracked"), 5000);
 		}
+		webcam->setChecked(false);
+		endoCam->setChecked(false);
 	}
 
 	else
@@ -776,15 +809,13 @@ void MainWindow::camWebcam(bool checked)
 		dataCollector = vtkSmartPointer<vtkPlusDataCollector>::New();
 
 		createVTKObject();
-		webcam->setCheckable(true);
-		endoCam->setCheckable(true);
+		
 	}
-
-
 }
 
 void MainWindow::camEndocam(bool checked)
 {
+	endoCam->setChecked(false);
 	if (!trackerInit) {
 		statusBar()->showMessage(tr("Start Tracker First"), 5000);
 		return;
@@ -810,6 +841,8 @@ void MainWindow::camEndocam(bool checked)
 
 		if (repository->GetTransform(PlusTransformName("Endo", "Tracker"), camera2Tracker, &isMatrixValid) == PLUS_SUCCESS && isMatrixValid)
 			statusBar()->showMessage(tr("Endoscope now being used & tracked"), 5000);
+		endoCam->setChecked(true);
+		webcam->setChecked(false);
 	}
 
 	else
@@ -821,7 +854,7 @@ void MainWindow::camEndocam(bool checked)
 		dataCollector = vtkSmartPointer<vtkPlusDataCollector>::New();
 
 		createVTKObject();
-		endoCam->setChecked(false);
+		
 	}
 }
 
@@ -945,7 +978,7 @@ void MainWindow::framePointsToCloud(cv::Mat &laserOn, cv::Mat &laserOff, int res
 					render[3] = 1;
 					vtkMatrix4x4::Multiply4x4(tracker2ImagePlane, imagePlane2Point, tracker2Point);
 					tracker2Point->MultiplyPoint(render, calcPixel);
-					saveData(camLine, col, row, normal, origin, calcPixel, intersection);
+					saveData(camera, pixel, col, row, normal, origin, calcPixel, intersection);
 				}
 			}
 		}
@@ -1010,23 +1043,29 @@ void MainWindow::about()
 }
 
 
-void MainWindow::saveData(linalg::EndoLine line, int col, int row, linalg::EndoPt normal, linalg::EndoPt origin, float calc[4], linalg::EndoPt inter)
+void MainWindow::saveData(linalg::EndoPt camera, linalg::EndoPt pixel, int col, int row, linalg::EndoPt normal, linalg::EndoPt origin, float calc[4], linalg::EndoPt inter)
 {
 	scanNumber++;
 	string name = "./Results/scan" + to_string(scanNumber);
 	string fullname = name + ".csv";
 	ofstream myfile(fullname);
 
-	myfile << "Cam X," << "Cam Y," << "Cam Z,"
+	myfile << "Cam Centre X," << "Cam Centre Y," << "Cam Centre Z,"
+		<< "Pixel X," << "Pixel Y," << "Pixel Z,"
 		<< "Plane Normal X," << "Plane Normal Y," << "Plane Normal Z,"
 		<< "Laser Origin X," << "Laser Origin Y," << "Laser Origin Z,"
 		<< "U," << "V," << "Calc U," << "Calc V," << "Calc W," << "Calc Z,"
 		<< "Intersection X," << "Y," << "Z" << endl;
 
-	//CAM:
-	myfile << line.a.x << ",";
-	myfile << line.a.y << ",";
-	myfile << line.a.z << ",";
+	//CAM Centre:
+	myfile << camera.x << ",";
+	myfile << camera.y << ",";
+	myfile << camera.z << ",";
+
+	//Pixel:
+	myfile << pixel.x << ",";
+	myfile << pixel.y << ",";
+	myfile << pixel.z << ",";
 
 	//Normal:
 	myfile << normal.x << ",";
