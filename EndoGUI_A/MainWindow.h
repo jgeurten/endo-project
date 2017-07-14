@@ -193,6 +193,7 @@ private:
 
 	int					framePd;	// period of frame rate
 	bool				trackReady, isReadyToSave, isSaving, playing, mcuConnected, laserOn, trackerInit, isScanning;
+	int dimensions[3];
 
 	vector<cv::Vec4i>	lines;
 	cv::Point			point1, point2;
