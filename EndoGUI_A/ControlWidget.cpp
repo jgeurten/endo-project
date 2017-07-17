@@ -19,16 +19,24 @@ ControlWidget::ControlWidget(QWidget *parent)
 	trackerButton->setText("Start Tracking");
 	vbox->addWidget(trackerButton);
 
-	
+	QLabel *spacer = new QLabel;
+	spacer->setText("");
+	vbox->addWidget(spacer);
+
 	saveButton = new QPushButton;
 	saveButton->setCheckable(true);
-	saveButton->setText("Save video");
+	saveButton->setText("Save Video");
 	vbox->addWidget(saveButton);
+
+	
+	vbox->addWidget(spacer);
 
 	scanButton = new QPushButton; 
 	scanButton->setCheckable(false);
 	scanButton->setText("Start Scanning");
 	vbox->addWidget(scanButton);
+
+	vbox->addWidget(spacer);
 
 	QHBoxLayout *hbox = new QHBoxLayout;
 	QLabel *label = new QLabel;

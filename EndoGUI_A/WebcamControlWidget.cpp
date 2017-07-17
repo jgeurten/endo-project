@@ -2,7 +2,7 @@
 
 //QT
 //#include <QtWidgets>
-//#include <Qlabel>
+#include <Qlabel>
 //#include <QHBoxLayout>
 #include <QPushButton>
 #include <QVBoxLayout> 
@@ -18,22 +18,41 @@ WebcamControlWidget::WebcamControlWidget(QWidget *parent)
 	streamButton->setCheckable(true);
 	streamButton->setText("Stream Video");
 	vbox->addWidget(streamButton);
+	
+	QLabel *spacer = new QLabel;
+	spacer->setText("");
+	vbox->addWidget(spacer);
+
+	QLabel *titleBS = new QLabel;
+	titleBS->setText("Brightness");
+	titleBS->setAlignment(Qt::AlignHCenter);
+	vbox->addWidget(titleBS);
 
 	//Slider bars for contrast, brightness
-	brightSlider = new QSlider(Qt::Vertical); 
+	brightSlider = new QSlider;
+	brightSlider->setOrientation(Qt::Horizontal);
 	brightSlider->setFocusPolicy(Qt::StrongFocus);
-	brightSlider->setTickPosition(QSlider::TicksBothSides);
-	brightSlider->setTickInterval(1);
+	brightSlider->setTickPosition(QSlider::TicksBelow);
+	brightSlider->setTickInterval(10);
 	brightSlider->setMaximum(100);
 	brightSlider->setMinimum(0);
 	vbox->addWidget(brightSlider);
-	
-	contrastSlider = new QSlider(Qt::Vertical);
+
+	vbox->addWidget(spacer);
+
+	QLabel *titleCS = new QLabel;
+	titleCS->setText("Contrast");
+	titleCS->setAlignment(Qt::AlignHCenter);
+	vbox->addWidget(titleCS);
+
+	contrastSlider = new QSlider;
+	contrastSlider->setOrientation(Qt::Horizontal);
 	contrastSlider->setFocusPolicy(Qt::StrongFocus);
-	contrastSlider->setTickPosition(QSlider::TicksBothSides);
-	contrastSlider->setTickInterval(1);
+	contrastSlider->setTickPosition(QSlider::TicksBelow);
+	contrastSlider->setTickInterval(10);
 	contrastSlider->setMaximum(100);
 	contrastSlider->setMinimum(0);
+	 
 	vbox->addWidget(contrastSlider); 
 	
 	this->setLayout(vbox);

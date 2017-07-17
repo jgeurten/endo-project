@@ -19,6 +19,10 @@ MCUControlWidget::MCUControlWidget(QWidget *parent)
 	mcuButton->setText("Connect Laser");
 	vbox->addWidget(mcuButton);
 
+	QLabel *spacer = new QLabel;
+	spacer->setText("");
+	vbox->addWidget(spacer);
+
 	laserButton = new QPushButton;
 	laserButton->setCheckable(true);
 	laserButton->setText("Toggle Laser");

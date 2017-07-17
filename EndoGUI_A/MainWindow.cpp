@@ -183,12 +183,17 @@ void MainWindow::createStatusBar()
 void MainWindow::createControlDock()
 {
 	//Create dock for webcam controller:
-	webcamDock = new QDockWidget(tr("Webcam Controls"), this);
+	webcamDock = new QDockWidget( this);
 	webcamDock->setAllowedAreas(Qt::LeftDockWidgetArea);
 	webcamDock->setFeatures(QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetFloatable);
 	addDockWidget(Qt::LeftDockWidgetArea, webcamDock);
 	webcamDock->setMinimumWidth(180);
 	webcamDock->setMaximumWidth(300); 
+
+	QLabel *wlabel = new QLabel("Webcam Controls", webcamDock);
+	wlabel->setStyleSheet("font-size: 10pt; font-weight: bold;");
+	//wlabel->setStyleSheet("font-weight: bold;");
+	webcamDock->setTitleBarWidget(wlabel);
 
 	QGridLayout* webcamControlsLayout = new QGridLayout;
 	webcamControlsLayout->setMargin(0);
@@ -206,12 +211,16 @@ void MainWindow::createControlDock()
 
 
 	//Create dock for laser controller:
-	mcuDock = new QDockWidget(tr("Laser Dock"), this);
+	mcuDock = new QDockWidget( this);
 	mcuDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
 	mcuDock->setFeatures(QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetFloatable);
 	addDockWidget(Qt::LeftDockWidgetArea, mcuDock);
 	mcuDock->setMinimumWidth(180);
 	mcuDock->setMaximumWidth(300);// (round(size->width()*0.33));
+
+	QLabel *label = new QLabel("Laser Controls", mcuDock);
+	label->setStyleSheet("font-size: 10pt; font-weight: bold;");
+	mcuDock->setTitleBarWidget(label);
 
 	QGridLayout* mcuControlsLayout = new QGridLayout;
 	mcuControlsLayout->setMargin(0);
@@ -229,12 +238,17 @@ void MainWindow::createControlDock()
 
 
 	//Tracker controller:
-	trackerDock = new QDockWidget(tr("Tracker Dock"), this);
+	trackerDock = new QDockWidget( this);
 	trackerDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
 	trackerDock->setFeatures(QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetFloatable);
 	addDockWidget(Qt::LeftDockWidgetArea, trackerDock);
 	trackerDock->setMinimumWidth(180);
 	trackerDock->setMaximumWidth(300);// (round(size->width()*0.33));
+
+	QLabel *tlabel = new QLabel("Tracker Controls", trackerDock);
+	tlabel->setStyleSheet("font-size: 10pt; font-weight: bold;");
+	trackerDock->setTitleBarWidget(tlabel);
+
 
 	QGridLayout* trackerControlsLayout = new QGridLayout;
 	trackerControlsLayout->setMargin(0);
