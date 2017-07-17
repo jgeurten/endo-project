@@ -220,9 +220,15 @@ private:
 	int					prevBrightness = 6;
 	int					prevContrast = 18;
 	ofstream			myfile;
+<<<<<<< HEAD
 	double				currentTime, prevTime;
 	linalg::EndoPt camera, normal, origin;
 
+=======
+	double				currentTime, prevTime; 
+	linalg::EndoPt camera, normal, origin;
+	
+>>>>>>> 587263f880ac41302d976457d8150b5af85e59f0
 
 	private slots:
 
@@ -258,7 +264,11 @@ public:
 	void getNormalPosition();
 	void getOriginPosition();
 	linalg::EndoPt getPixelPosition(int row, int col);
+<<<<<<< HEAD
 
+=======
+	
+>>>>>>> 587263f880ac41302d976457d8150b5af85e59f0
 
 
 

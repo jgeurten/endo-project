@@ -386,7 +386,11 @@ void MainWindow::createVTKObject()
 	point2ImagePlane->SetElement(3, 2, 0);
 	point2ImagePlane->SetElement(3, 3, 1);
 	vtkMatrix4x4::Invert(point2ImagePlane, imagePlane2Point);	//camera plane to pixel
+<<<<<<< HEAD
 	//Handle vtk transform point 2 tracker:
+=======
+																//Handle vtk transform point 2 tracker:
+>>>>>>> 587263f880ac41302d976457d8150b5af85e59f0
 	//point2Tracker->PostMultiply();
 	*/
 
@@ -399,7 +403,11 @@ void MainWindow::createVTKObject()
 	intrinsicsMat->SetElement(1, 2, 2.36307892e+002);
 	intrinsicsMat->SetElement(2, 0, 0);
 	intrinsicsMat->SetElement(2, 1, 0);
+<<<<<<< HEAD
 	intrinsicsMat->SetElement(2, 2, 1);
+=======
+	intrinsicsMat->SetElement(2, 2, 1);			
+>>>>>>> 587263f880ac41302d976457d8150b5af85e59f0
 }
 
 void MainWindow::camera_button_clicked()
@@ -638,7 +646,11 @@ void MainWindow::updateTracker()
 	}
 }
 
+<<<<<<< HEAD
 void MainWindow::getProjectionPosition()
+=======
+void MainWindow::getProjectionPosition()		
+>>>>>>> 587263f880ac41302d976457d8150b5af85e59f0
 {
 	camera.x = imagePlane2Tracker->GetElement(0, 3);		// get x,y,z of implane2camera*camera2tracker
 	camera.y = imagePlane2Tracker->GetElement(1, 3);
@@ -930,7 +942,11 @@ void MainWindow::framePointsToCloud(cv::Mat &laserOn, cv::Mat &laserOff, int res
 	//get camera centre 
 	getProjectionPosition();	//updates camera coords
 
+<<<<<<< HEAD
 								//laser plane geometry								
+=======
+	//laser plane geometry								
+>>>>>>> 587263f880ac41302d976457d8150b5af85e59f0
 	getNormalPosition();		//updates normal
 	getOriginPosition();		//updates origin
 
@@ -960,7 +976,11 @@ void MainWindow::framePointsToCloud(cv::Mat &laserOn, cv::Mat &laserOff, int res
 
 linalg::EndoPt MainWindow::getPixelPosition(int row, int col)		//returns pixel location in tracker space
 {
+<<<<<<< HEAD
 	linalg::EndoPt result;
+=======
+	linalg::EndoPt result; 
+>>>>>>> 587263f880ac41302d976457d8150b5af85e59f0
 	double plane2World[4];
 	double plane2FeaturePoint[4] = { col - 3.18246521e+002, row - 2.36307892e+002, 6.21962708e+002, 1 }; //homogenous transform from config file
 	imagePlane2Tracker->MultiplyPoint(plane2FeaturePoint, plane2World);
@@ -974,8 +994,13 @@ linalg::EndoPt MainWindow::getPixelPosition(int row, int col)		//returns pixel l
 
 linalg::EndoPt MainWindow::validatePixel(linalg::EndoPt point)
 {
+<<<<<<< HEAD
 	double plane2FeaturePt[4], normPlane2Feat[3], world2Feat[3];
 	linalg::EndoPt result;
+=======
+	double plane2FeaturePt[4], normPlane2Feat[3], world2Feat[3]; 
+	linalg::EndoPt result; 
+>>>>>>> 587263f880ac41302d976457d8150b5af85e59f0
 	double pointVector[4] = { point.x, point.y, point.z, 1 };		//unclear if last value = 1 or 0
 	tracker2ImagePlane->MultiplyPoint(pointVector, plane2FeaturePt);
 	normPlane2Feat[0] = plane2FeaturePt[0] / plane2FeaturePt[3];
@@ -1007,8 +1032,13 @@ void MainWindow::about()
 }
 
 
+<<<<<<< HEAD
 void MainWindow::saveData(linalg::EndoPt cameraPt, linalg::EndoPt pixelPt, linalg::EndoPt normalPt, linalg::EndoPt originPt, linalg::EndoLine cameraline,
 	int col, int row, linalg::EndoPt calcPixel, linalg::EndoPt inter)
+=======
+void MainWindow::saveData(linalg::EndoPt cameraPt, linalg::EndoPt pixelPt, linalg::EndoPt normalPt, linalg::EndoPt originPt, linalg::EndoLine cameraline, 
+	int col, int row, linalg::EndoPt calcPixel , linalg::EndoPt inter)
+>>>>>>> 587263f880ac41302d976457d8150b5af85e59f0
 {
 	scanNumber++;
 	string name = "./Results/scan" + to_string(scanNumber);
@@ -1019,7 +1049,11 @@ void MainWindow::saveData(linalg::EndoPt cameraPt, linalg::EndoPt pixelPt, linal
 		<< "Pixel X," << "Pixel Y," << "Pixel Z,"
 		<< "Plane Normal X," << "Plane Normal Y," << "Plane Normal Z,"
 		<< "Laser Origin X," << "Laser Origin Y," << "Laser Origin Z,"
+<<<<<<< HEAD
 		<< "CamLine.A.X," << "CamLine.A.Y," << "CamLine.A.Z,"
+=======
+		<<"CamLine.A.X," << "CamLine.A.Y," << "CamLine.A.Z,"
+>>>>>>> 587263f880ac41302d976457d8150b5af85e59f0
 		<< "CamLine.B.X," << "CamLine.B.Y," << "CamLine.B.Z,"
 		<< "U," << "V," << "Calc U," << "Calc V,"
 		<< "Intersection X," << "Y," << "Z" << endl;
@@ -1052,7 +1086,11 @@ void MainWindow::saveData(linalg::EndoPt cameraPt, linalg::EndoPt pixelPt, linal
 	myfile << cameraline.b.y << ",";
 	myfile << cameraline.b.z << ",";
 
+<<<<<<< HEAD
 
+=======
+	
+>>>>>>> 587263f880ac41302d976457d8150b5af85e59f0
 	//Original U and V:
 	myfile << col << ",";
 	myfile << row << ",";
