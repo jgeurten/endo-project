@@ -368,6 +368,7 @@ void MainWindow::createVTKObject()
 	//6.21962708e+002, 0, 3.18246521e+002, 0, 6.19908875e+002, 2.36307892e+002, 0, 0, 1);
 	//Set point 2 image plane transform explicitly:
 
+	/*
 	point2ImagePlane->SetElement(0, 0, 1);
 	point2ImagePlane->SetElement(0, 1, 0);
 	point2ImagePlane->SetElement(0, 2, 0);
@@ -386,42 +387,51 @@ void MainWindow::createVTKObject()
 	point2ImagePlane->SetElement(3, 3, 1);
 
 	vtkMatrix4x4::Invert(point2ImagePlane, imagePlane2Point);	//camera plane to pixel
-	//Handle vtk transform point 2 tracker:
-	point2Tracker->PostMultiply();
+																//Handle vtk transform point 2 tracker:
+	//point2Tracker->PostMultiply();
+	*/
 
+
+	intrinsicsMat->SetElement(0, 0, 6.21962708e+002);
+	intrinsicsMat->SetElement(0, 1, 0);
+	intrinsicsMat->SetElement(0, 2, 3.18246521e+002);
+	intrinsicsMat->SetElement(1, 0, 0);
+	intrinsicsMat->SetElement(1, 1, 6.19908875e+002);
+	intrinsicsMat->SetElement(1, 2, 2.36307892e+002);
+	intrinsicsMat->SetElement(2, 0, 0);
+	intrinsicsMat->SetElement(2, 1, 0);
+	intrinsicsMat->SetElement(2, 2, 1);			
 }
 
 void MainWindow::camera_button_clicked()
 {
-	if (!playing)
-	{
-		if (!trackerInit) {
-			playing = false;
-			statusBar()->showMessage(tr("Connect Tracker First"), 5000);
-		}
-		else
-		{
-			//Frame:
-			mixer->GetChannel()->GetTrackedFrame(mixerFrame);
-			//Images:
-			vtkImageData *_image = mixerFrame.GetImageData()->GetImage();
-			
-			_image->GetDimensions(dimensions);
+	if (!playing) {
+		capture = cv::VideoCapture(0);		//consider changing to plus get frame
+		capture.open(0);
+		if (capture.isOpened()) {
+			capture.set(CV_CAP_PROP_FPS, 30);
+			capture.set(CV_CAP_PROP_AUTOFOCUS, 0);
+			frameWidth = capture.get(CV_CAP_PROP_FRAME_WIDTH);
+			frameHeight = capture.get(CV_CAP_PROP_FRAME_HEIGHT);
+			framePd = 1000 / (int)capture.get(CV_CAP_PROP_FPS);
+			playing = true;
+			controlWidget->streamButton->setText(tr("Stop Stream"));
 
-			//Copy vtk image to cv::mat data type
-			distStreamImg = cv::Mat(dimensions[1], dimensions[0], CV_8UC3, _image->GetScalarPointer(0, 0, 0));
-
-			//Undistort the video stream. Save undistortion map1, map2 to later use in remap (much more efficient)
+			//Get undistorted transform map first time:
+			capture >> distStreamImg;
 			cv::undistort(distStreamImg, streamImg, intrinsics, distortion);
 			cv::initUndistortRectifyMap(intrinsics, distortion, cv::Mat(), intrinsics, cv::Size(distStreamImg.cols, distStreamImg.rows),
 				CV_32FC1, map1, map2);
 
-			controlWidget->streamButton->setText(tr("Stop Stream"));
-			playing = true;
+			if (!trackerInit)
+				trackTimer->start(40);
+
 		}
+		else
+			statusBar()->showMessage(tr("Unable to Detect Camera"), 3000);
 	}
-	else
-	{
+
+	else {
 		controlWidget->streamButton->setText(tr("Stream Video"));
 		statusBar()->showMessage(tr("Ready"), 7000);
 		playing = false;
@@ -429,37 +439,51 @@ void MainWindow::camera_button_clicked()
 	}
 }
 
+
 void MainWindow::update_image()
 {
-	//Need to figure out how to control brightness and contrast without opencv
-/*
-	cv::namedWindow("Control", CV_WINDOW_NORMAL);
-	cvCreateTrackbar("Brightness", "Control", &brightness, 100);
-	cvCreateTrackbar("Contrast", "Control", &contrast, 100);
-	capture.set(CV_CAP_PROP_CONTRAST, (double)contrast);
-	capture.set(CV_CAP_PROP_BRIGHTNESS, (double)brightness);
 
-	capture >> distStreamImg;
-	cv::remap(distStreamImg, streamImg, map1, map2, cv::INTER_CUBIC);
-*/
-	//Get image from tracked frame:
-	mixer->GetChannel()->GetTrackedFrame(mixerFrame);
-	vtkImageData *vtkImage = mixerFrame.GetImageData()->GetImage();
-	vtkImage->GetDimensions(dimensions);
 
-	distStreamImg = cv::Mat(dimensions[1], dimensions[0], CV_8UC3, vtkImage->GetScalarPointer(0, 0, 0));
+	if (capture.isOpened())
+	{
+		cv::namedWindow("Control", CV_WINDOW_NORMAL);
+		cvCreateTrackbar("Brightness", "Control", &brightness, 100);
+		cvCreateTrackbar("Contrast", "Control", &contrast, 100);
+		capture.set(CV_CAP_PROP_CONTRAST, (double)contrast);
+		capture.set(CV_CAP_PROP_BRIGHTNESS, (double)brightness);
 
-	//Remap distorted image to undistorted:
-	cv::remap(distStreamImg, streamImg, map1, map2, cv::INTER_CUBIC);
-	cv::Size s = streamImg.size();
+		capture >> distStreamImg;
+		cv::remap(distStreamImg, streamImg, map1, map2, cv::INTER_CUBIC);
 
-	image = QImage((const unsigned char*)(streamImg.data), streamImg.cols, streamImg.rows, streamImg.cols*streamImg.channels(), QImage::Format_RGB888).rgbSwapped();
+		cv::Size s = streamImg.size();
+		image = QImage((const unsigned char*)(streamImg.data), streamImg.cols, streamImg.rows, streamImg.cols*streamImg.channels(), QImage::Format_RGB888).rgbSwapped();
 
-	if (isSaving)
-		saveVideo();
+		switch (streamImg.type())	//CONVERT MAT TO QIMAGE
+		{
+		case CV_8UC4:
+		{
+			image = QImage((const unsigned char*)(streamImg.data), streamImg.cols, streamImg.rows, streamImg.cols*streamImg.channels(), QImage::Format_ARGB32);
+			break;
+		}
 
-	repaint();
+		case CV_8UC3:
+		{
+			image = QImage((const unsigned char*)(streamImg.data), streamImg.cols, streamImg.rows, streamImg.cols*streamImg.channels(), QImage::Format_RGB888).rgbSwapped();
+			break;
+		}
 
+		default:
+			qWarning() << "Type Not Handled";
+			break;
+		}
+
+		if (isSaving)
+			saveVideo();
+
+		repaint();
+	}
+	else
+		statusBar()->showMessage(tr("Unable to Detect Camera"), 5000);
 }
 
 void MainWindow::scanButtonPress()
@@ -595,13 +619,14 @@ void MainWindow::updateTracker()
 			trackReady = false;
 			return;
 		}
-
+		/*
 		if (repository->GetTransform(camera2ImageName, camera2Image, &isValid) != PLUS_SUCCESS || !isValid)
 		{
 			LOG_ERROR("Unable to successfully transform camera to image");
 			trackReady = false;
 			return;
 		}
+		*/
 
 		if (repository->GetTransform(tracker2ImagePlaneName, tracker2ImagePlane, &isValid) != PLUS_SUCCESS || !isValid)
 		{
@@ -614,9 +639,9 @@ void MainWindow::updateTracker()
 	}
 }
 
-void MainWindow::getProjectionPosition()		//get projection centre wrt tracker
+void MainWindow::getProjectionPosition()		
 {
-	camera.x = imagePlane2Tracker->GetElement(0, 3);
+	camera.x = imagePlane2Tracker->GetElement(0, 3);		// get x,y,z of implane2camera*camera2tracker
 	camera.y = imagePlane2Tracker->GetElement(1, 3);
 	camera.z = imagePlane2Tracker->GetElement(2, 3);
 
@@ -676,8 +701,14 @@ void MainWindow::saveButtonPressed()
 
 void MainWindow::saveVideo()
 {
-	gVideoWrite.write(streamImg);
-	qDebug() << "Save Video Thread";
+	if (capture.isOpened()) {
+		//capture.grab();
+		capture >> savingMat;
+		gVideoWrite.write(savingMat);
+		qDebug() << "Save Video Thread";
+	}
+	else
+		statusBar()->showMessage(tr("Unable to open video stream"), 2000);
 }
 
 void MainWindow::paintEvent(QPaintEvent*)
@@ -898,54 +929,30 @@ void MainWindow::framePointsToCloud(cv::Mat &laserOn, cv::Mat &laserOff, int res
 	}
 
 	//get camera centre 
-	getProjectionPosition();
+	getProjectionPosition();	//updates camera coords
+
 	//laser plane geometry								
-	getNormalPosition();
-	getOriginPosition();
+	getNormalPosition();		//updates normal
+	getOriginPosition();		//updates origin
 
 	cv::Mat laserLineImg = subtractLaser(laserOff, laserOn);
-	linalg::EndoPt pixel, newPixel, newestPixel;
-	float render[4];
-	float calcPixel[4];
+	linalg::EndoPt pixel, calcPixel;
 
 	for (int row = VERTICAL_OFFSET; row < laserLineImg.rows - VERTICAL_OFFSET; row += res) {
 		for (int col = HORIZONTAL_OFFSET; col < laserLineImg.cols - HORIZONTAL_OFFSET; col += res) {
 			if (laserLineImg.at<uchar>(row, col) == 255) {
 
-				pixel = getPixelPosition(row, col);
-				newPixel = getNewPixelPosition(row, col);
-
-				if (col > 318)	//cx
-					newestPixel.x = camera.x + col;
-				else
-					newestPixel.x = camera.x - col;
-
-				if (row > 236)	//cy
-					newestPixel.y = camera.y + row;
-				else
-					newestPixel.y = camera.y - row;
-
-				newestPixel.z = camera.z + 621; //focus
-
-				linalg::EndoLine camLine = linalg::lineFromPoints(camera, pixel);				//in world coordinates
+				pixel = getPixelPosition(row, col);														//returns pixel 2 world coords
+				linalg::EndoLine camLine = linalg::lineFromPoints(camera, pixel);						//in world coordinates
 				linalg::EndoPt intersection = linalg::solveIntersection(normal, origin, camLine);		//in world coordinates
-
-					//validated intersection math using MATLAB and http://www.ambrsoft.com/TrigoCalc/Plan3D/PlaneLineIntersection_.htm
-					//July 2017
 
 				if (intersection.x == 0.0) {
 					qDebug("No intersection found");
 					break;
 				}
 				else {
-					//render 3D point intersection -> image plane space
-					render[0] = intersection.x;
-					render[1] = intersection.y;
-					render[2] = intersection.z;
-					render[3] = 1;
-					vtkMatrix4x4::Multiply4x4(tracker2ImagePlane, imagePlane2Point, tracker2Point);
-					tracker2Point->MultiplyPoint(render, calcPixel);
-					saveData(camLine, col, row, normal, origin, calcPixel, intersection);
+					calcPixel = validatePixel(intersection);
+					saveData(camera, pixel, normal, origin, camLine, col, row, calcPixel, intersection);
 				}
 			}
 		}
@@ -954,42 +961,33 @@ void MainWindow::framePointsToCloud(cv::Mat &laserOn, cv::Mat &laserOff, int res
 
 linalg::EndoPt MainWindow::getPixelPosition(int row, int col)		//returns pixel location in tracker space
 {
-	const float pix[4] = { col, row, 1, 1 };
-	float result[4];
-	linalg::EndoPt pt;
-	//point2Tracker->SetMatrix(point2ImagePlane);
-	//point2Tracker->Concatenate(imagePlane2Tracker);
-	//point2Tracker->MultiplyPoint(pix, result);	//put point pix into projection space
+	linalg::EndoPt result; 
+	double plane2World[4];
+	double plane2FeaturePoint[4] = { col - 3.18246521e+002, row - 2.36307892e+002, 6.21962708e+002, 1 }; //homogenous transform from config file
+	imagePlane2Tracker->MultiplyPoint(plane2FeaturePoint, plane2World);
+	//Now have featurePoint 2 world: divide by 4th element in plane2World
 
-	vtkMatrix4x4::Multiply4x4(point2ImagePlane, imagePlane2Tracker, pixel2Tracker);
-	pixel2Tracker->MultiplyPoint(pix, result);
-	pt.x = result[0];
-	pt.y = result[1];
-	pt.z = result[2];
-	return pt;
+	result.x = plane2World[0] / plane2World[3];
+	result.y = plane2World[1] / plane2World[3];
+	result.z = plane2World[2] / plane2World[3];
+	return result;
 }
 
-linalg::EndoPt MainWindow::getNewPixelPosition(int row, int col)		//returns pixel location in tracker space
+linalg::EndoPt MainWindow::validatePixel(linalg::EndoPt point)
 {
-	const float pix[4] = { col, row, 1, 1 };
-	float result[4];
-	linalg::EndoPt pt;
-	bool isValid(false);
-
-	if (repository->GetTransform(tracker2PixelName, tracker2Pixel, &isValid) != PLUS_SUCCESS || !isValid)
-	{
-		LOG_ERROR("Unable to successfully transform tracker 2 image plane");
-		return linalg::MakePoint(0, 0, 0);
-	}
-
-	tracker2Pixel->MultiplyPoint(pix, result);
-
-	pt.x = result[0];
-	pt.y = result[1];
-	pt.z = result[2];
-	return pt;
+	double plane2FeaturePt[4], normPlane2Feat[3], world2Feat[3]; 
+	linalg::EndoPt result; 
+	double pointVector[4] = { point.x, point.y, point.z, 1 };		//unclear if last value = 1 or 0
+	tracker2ImagePlane->MultiplyPoint(pointVector, plane2FeaturePt);
+	normPlane2Feat[0] = plane2FeaturePt[0] / plane2FeaturePt[3];
+	normPlane2Feat[1] = plane2FeaturePt[1] / plane2FeaturePt[3];
+	normPlane2Feat[2] = plane2FeaturePt[2] / plane2FeaturePt[3];
+	intrinsicsMat->MultiplyPoint(normPlane2Feat, world2Feat);
+	result.x = world2Feat[0] / world2Feat[2];
+	result.y = world2Feat[1] / world2Feat[2];
+	result.z = 0;
+	return result;
 }
-
 
 void MainWindow::help()
 {
@@ -1010,7 +1008,8 @@ void MainWindow::about()
 }
 
 
-void MainWindow::saveData(linalg::EndoLine line, int col, int row, linalg::EndoPt normal, linalg::EndoPt origin, float calc[4], linalg::EndoPt inter)
+void MainWindow::saveData(linalg::EndoPt cameraPt, linalg::EndoPt pixelPt, linalg::EndoPt normalPt, linalg::EndoPt originPt, linalg::EndoLine cameraline, 
+	int col, int row, linalg::EndoPt calcPixel , linalg::EndoPt inter)
 {
 	scanNumber++;
 	string name = "./Results/scan" + to_string(scanNumber);
@@ -1018,40 +1017,53 @@ void MainWindow::saveData(linalg::EndoLine line, int col, int row, linalg::EndoP
 	ofstream myfile(fullname);
 
 	myfile << "Cam X," << "Cam Y," << "Cam Z,"
+		<< "Pixel X," << "Pixel Y," << "Pixel Z,"
 		<< "Plane Normal X," << "Plane Normal Y," << "Plane Normal Z,"
 		<< "Laser Origin X," << "Laser Origin Y," << "Laser Origin Z,"
-		<< "U," << "V," << "Calc U," << "Calc V," << "Calc W," << "Calc Z,"
+		<<"CamLine.A.X," << "CamLine.A.Y," << "CamLine.A.Z,"
+		<< "CamLine.B.X," << "CamLine.B.Y," << "CamLine.B.Z,"
+		<< "U," << "V," << "Calc U," << "Calc V,"
 		<< "Intersection X," << "Y," << "Z" << endl;
 
 	//CAM:
-	myfile << line.a.x << ",";
-	myfile << line.a.y << ",";
-	myfile << line.a.z << ",";
+	myfile << cameraPt.x << ",";
+	myfile << cameraPt.y << ",";
+	myfile << cameraPt.z << ",";
+
+	//Pixel:
+	myfile << pixelPt.x << ",";
+	myfile << pixelPt.y << ",";
+	myfile << pixelPt.z << ",";
 
 	//Normal:
-	myfile << normal.x << ",";
-	myfile << normal.y << ",";
-	myfile << normal.z << ",";
+	myfile << normalPt.x << ",";
+	myfile << normalPt.y << ",";
+	myfile << normalPt.z << ",";
 
 	//Origin:
-	myfile << origin.x << ",";
-	myfile << origin.y << ",";
-	myfile << origin.z << ",";
+	myfile << originPt.x << ",";
+	myfile << originPt.y << ",";
+	myfile << originPt.z << ",";
 
+	//Camera Line:
+	myfile << cameraline.a.x << ",";
+	myfile << cameraline.a.y << ",";
+	myfile << cameraline.a.z << ",";
+	myfile << cameraline.b.x << ",";
+	myfile << cameraline.b.y << ",";
+	myfile << cameraline.b.z << ",";
+
+	
 	//Original U and V:
 	myfile << col << ",";
 	myfile << row << ",";
 
 	//Calculated U and V:
-	myfile << calc[0] << ",";
-	myfile << calc[1] << ",";
-
-	myfile << calc[2] << ",";
-	myfile << calc[3] << ",";
+	myfile << calcPixel.x << ",";
+	myfile << calcPixel.y << ",";
 
 	//intersection:
 	myfile << inter.x << ",";
 	myfile << inter.y << ",";
 	myfile << inter.z << ",";
 }
-
