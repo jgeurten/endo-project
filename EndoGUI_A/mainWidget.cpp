@@ -3,6 +3,7 @@
 // Local includes
 #include "mainWidget.h"
 #include "trackerWidget.h"
+#include "ScanClass.h"
 //#include "visualizationController.h"
 //#include "Control"
 

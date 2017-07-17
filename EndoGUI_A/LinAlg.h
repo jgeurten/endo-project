@@ -22,7 +22,7 @@ namespace linalg
 
 	};
 
-	 struct EndoPlane
+	struct EndoPlane
 	{
 		double a;
 		double b;
@@ -65,23 +65,6 @@ namespace linalg
 		plane.d = -(normal.x*origin.x + normal.y*origin.y + normal.z*origin.z);
 		return plane;
 	}
-
-	static EndoLine lineFromPoints(EndoPt p1, EndoPt p2)
-	{
-		EndoPt b;
-		b.x = (p2.x - p1.x);
-		b.y = (p2.y - p1.y);
-		b.z = (p2.z - p1.z);
-
-		EndoLine line = MakeLine(p1, b);
-		return line;
-	}
-
-	static double dot(EndoPt p1, EndoPt p2)
-	{
-		return (p1.x*p2.x + p1.y*p2.y + p1.z*p2.z);
-	}
-
 	static EndoPt unitVector(EndoPt pt)
 	{
 		EndoPt result;
@@ -91,16 +74,32 @@ namespace linalg
 		result.z = pt.z / length;
 		return result;
 	}
+	static EndoLine lineFromPoints(EndoPt p1, EndoPt p2)
+	{
+		EndoPt b, unitB;
+		b.x = (p2.x - p1.x);
+		b.y = (p2.y - p1.y);
+		b.z = (p2.z - p1.z);
+		unitB = unitVector(b);
+		EndoLine line = MakeLine(p1, unitB);
+		return line;
+	}
+
+	static double dot(EndoPt p1, EndoPt p2)
+	{
+		return (p1.x*p2.x + p1.y*p2.y + p1.z*p2.z);
+	}
+
+
 
 	static EndoPt solveIntersection(EndoPt normal, EndoPt origin, EndoLine camLine)
 	{
 		//laser plane normal vector, origin: point on laser plane, camline: parametric equation of the camera line
-	   //solve for t in parametric equation --> POI 
+		//solve for t in parametric equation --> POI 
 
 		EndoPt result;
-		
-		EndoPt unitCam = unitVector(camLine.b);
-		double angle = dot(normal, unitCam);
+
+		double angle = dot(normal, camLine.b);	//normal and camline vector are both normalized
 
 		if (abs(angle) < 1e-6)	//line is parallel to plane
 		{
@@ -122,7 +121,6 @@ namespace linalg
 			result.y = camLine.a.y + t*camLine.b.y;
 			result.z = camLine.a.z + t*camLine.b.z;
 		}
-
 		return result;
 	}
 }

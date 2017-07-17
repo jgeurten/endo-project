@@ -33,6 +33,7 @@ ADD_EXECUTABLE(EndoScanner
   qlightwidget.cpp
   Controlwidget.cpp
   EndoModel.cpp
+  ScanClass.cpp
 
   ${EndoScannerArduinoFirmware_Sources}
 
@@ -44,6 +45,8 @@ ADD_EXECUTABLE(EndoScanner
   EndoModel.h
   defines.h
   LinAlg.h
+  ScanClass.h
+
   ${EndoScannerArduinoFirmware_headers}
   )
 
