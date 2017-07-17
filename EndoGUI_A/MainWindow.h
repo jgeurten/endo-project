@@ -8,6 +8,9 @@
 #include "ControlWidget.h"
 #include "LinAlg.h"
 #include "EndoModel.h"
+#include "MCUControlWidget.h"
+#include <WebcamControlWidget.h>
+
 
 //QT includes
 #include <qmainwindow.h>
@@ -66,7 +69,11 @@ class vtkRenderer;
 class vtkTexture;
 class vtkImageImport;
 class vtkTrackerTool;
+
+//Local forward declaration
 class ControlWidget;
+class MCUControlWidget; 
+class WebcamControlWidget;
 
 namespace Ui {
 	class MainWindow;
@@ -110,8 +117,15 @@ private:
 	QMediaPlayer	*player;
 	QTimer			*trackTimer;
 	QTimer			*scanTimer;
-	QDockWidget		*controlDock;
-	ControlWidget	*controlWidget;
+	
+	QDockWidget		*webcamDock;
+	QDockWidget		*mcuDock;
+	QDockWidget		*trackerDock;
+
+	ControlWidget	*trackerControl;
+	MCUControlWidget *mcuControl;
+	WebcamControlWidget *webcamControl;
+
 	QImage			 image;
 	QPixmap			 pixLabel;
 	QLabel			*videoLabel;

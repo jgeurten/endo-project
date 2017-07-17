@@ -26,10 +26,7 @@ public:
 public:
 	std::vector< QLightWidget *>			lightWidgets;
 	std::vector< QLabel *>					labelWidgets;
-	QPushButton								*streamButton;
 	QPushButton								*saveButton;
-	QPushButton								*mcuButton;
-	QPushButton								*laserButton;
 	QPushButton								*trackerButton;
 	QPushButton								*scanButton; 
 

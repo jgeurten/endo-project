@@ -13,31 +13,17 @@ ControlWidget::ControlWidget(QWidget *parent)
 {
 	QVBoxLayout *vbox = new QVBoxLayout; 
 
-	//Live stream of video
-	streamButton = new QPushButton; 
-	streamButton->setCheckable(true);
-	streamButton->setText("Stream Video");
-	vbox->addWidget(streamButton);
-
+	
 	trackerButton = new QPushButton;
 	trackerButton->setCheckable(true);
 	trackerButton->setText("Start Tracking");
 	vbox->addWidget(trackerButton);
 
-	mcuButton = new QPushButton;
-	mcuButton->setCheckable(true);
-	mcuButton->setText("Connect MCU");
-	vbox->addWidget(mcuButton);
-
+	
 	saveButton = new QPushButton;
 	saveButton->setCheckable(true);
 	saveButton->setText("Save video");
 	vbox->addWidget(saveButton);
-
-	laserButton = new QPushButton;
-	laserButton->setCheckable(false);
-	laserButton->setText("Laser On");
-	vbox->addWidget(laserButton);
 
 	scanButton = new QPushButton; 
 	scanButton->setCheckable(false);

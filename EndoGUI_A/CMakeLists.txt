@@ -18,6 +18,7 @@ SET(CMAKE_AUTORCC ON)
 
 FIND_PACKAGE(OpenCV REQUIRED NO_MODULE)
 FIND_PACKAGE(PlusLib REQUIRED NO_MODULE)
+
 FIND_PACKAGE(vtk REQUIRED)
 
 INCLUDE(${VTK_USE_FILE})
@@ -34,6 +35,8 @@ ADD_EXECUTABLE(EndoScanner
   Controlwidget.cpp
   EndoModel.cpp
   ScanClass.cpp
+  MCUControlWidget.cpp
+  WebcamControlWidget.cpp
 
   ${EndoScannerArduinoFirmware_Sources}
 
@@ -46,6 +49,8 @@ ADD_EXECUTABLE(EndoScanner
   defines.h
   LinAlg.h
   ScanClass.h
+  MCUControlWidget.h
+  WebcamControlWidget.h
 
   ${EndoScannerArduinoFirmware_headers}
   )

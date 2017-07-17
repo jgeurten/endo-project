@@ -91,6 +91,7 @@
 using namespace std;
 
 class ControlWidget;
+class MCUControlWidget; 
 
 MainWindow::MainWindow(QWidget *parent)
 	:QMainWindow(parent)
@@ -181,34 +182,81 @@ void MainWindow::createStatusBar()
 
 void MainWindow::createControlDock()
 {
-	controlDock = new QDockWidget(tr("Control Dock"), this);
-	controlDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
-	controlDock->setFeatures(QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetFloatable);
-	addDockWidget(Qt::LeftDockWidgetArea, controlDock);
-	controlDock->setMinimumWidth(180);
-	controlDock->setMaximumWidth(300);// (round(size->width()*0.33));
+	//Create dock for webcam controller:
+	webcamDock = new QDockWidget(tr("Webcam Controls"), this);
+	webcamDock->setAllowedAreas(Qt::LeftDockWidgetArea);
+	webcamDock->setFeatures(QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetFloatable);
+	addDockWidget(Qt::LeftDockWidgetArea, webcamDock);
+	webcamDock->setMinimumWidth(180);
+	webcamDock->setMaximumWidth(300); 
 
-	QFrame* mainFrame = new QFrame;
-	mainFrame->setFrameStyle(QFrame::WinPanel | QFrame::Sunken);
-	mainFrame->setLineWidth(2);
+	QGridLayout* webcamControlsLayout = new QGridLayout;
+	webcamControlsLayout->setMargin(0);
+	webcamControlsLayout->setSpacing(10);
+	webcamControlsLayout->setAlignment(Qt::AlignTop);
 
-	QGridLayout* controlsLayout = new QGridLayout;
-	controlsLayout->setMargin(0);
-	controlsLayout->setSpacing(10);
-	controlsLayout->setAlignment(Qt::AlignTop);
-	mainFrame->setLayout(controlsLayout);
+	QFrame* webcamFrame = new QFrame;
+	webcamFrame->setFrameStyle(QFrame::WinPanel | QFrame::Sunken);
+	webcamFrame->setLineWidth(2);
+	webcamFrame->setLayout(webcamControlsLayout);
 
-	controlDock->setWidget(mainFrame);
+	webcamDock->setWidget(webcamFrame);
+	webcamControl = new WebcamControlWidget(this);
+	webcamControlsLayout->addWidget(webcamControl);
 
-	controlWidget = new ControlWidget(this);
-	controlsLayout->addWidget(controlWidget);
 
-	connect(controlWidget->streamButton, SIGNAL(clicked()), this, SLOT(camera_button_clicked()));
-	connect(controlWidget->saveButton, SIGNAL(clicked()), this, SLOT(saveButtonPressed()));
-	connect(controlWidget->mcuButton, SIGNAL(clicked()), this, SLOT(connectMCU()));
-	connect(controlWidget->laserButton, SIGNAL(clicked()), this, SLOT(toggleLaser()));
-	connect(controlWidget->trackerButton, SIGNAL(clicked()), this, SLOT(startTracker()));
-	connect(controlWidget->scanButton, SIGNAL(clicked()), this, SLOT(scanButtonPress()));
+	//Create dock for laser controller:
+	mcuDock = new QDockWidget(tr("Laser Dock"), this);
+	mcuDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
+	mcuDock->setFeatures(QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetFloatable);
+	addDockWidget(Qt::LeftDockWidgetArea, mcuDock);
+	mcuDock->setMinimumWidth(180);
+	mcuDock->setMaximumWidth(300);// (round(size->width()*0.33));
+
+	QGridLayout* mcuControlsLayout = new QGridLayout;
+	mcuControlsLayout->setMargin(0);
+	mcuControlsLayout->setSpacing(10);
+	mcuControlsLayout->setAlignment(Qt::AlignTop);
+
+	QFrame* mcuFrame = new QFrame;
+	mcuFrame->setFrameStyle(QFrame::WinPanel | QFrame::Sunken);
+	mcuFrame->setLineWidth(2);
+	mcuFrame->setLayout(mcuControlsLayout);
+
+	mcuDock->setWidget(mcuFrame);
+	mcuControl = new MCUControlWidget(this);
+	mcuControlsLayout->addWidget(mcuControl);
+
+
+	//Tracker controller:
+	trackerDock = new QDockWidget(tr("Tracker Dock"), this);
+	trackerDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
+	trackerDock->setFeatures(QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetFloatable);
+	addDockWidget(Qt::LeftDockWidgetArea, trackerDock);
+	trackerDock->setMinimumWidth(180);
+	trackerDock->setMaximumWidth(300);// (round(size->width()*0.33));
+
+	QGridLayout* trackerControlsLayout = new QGridLayout;
+	trackerControlsLayout->setMargin(0);
+	trackerControlsLayout->setSpacing(10);
+	trackerControlsLayout->setAlignment(Qt::AlignTop);
+	
+	QFrame* trackerFrame = new QFrame;
+	trackerFrame->setFrameStyle(QFrame::WinPanel | QFrame::Sunken);
+	trackerFrame->setLineWidth(2);
+	trackerFrame->setLayout(trackerControlsLayout);
+
+	trackerDock->setWidget(trackerFrame);
+	trackerControl = new ControlWidget(this);
+	trackerControlsLayout->addWidget(trackerControl);
+
+	//connect all push buttons:
+	connect(webcamControl->streamButton, SIGNAL(clicked()), this, SLOT(camera_button_clicked()));
+	connect(trackerControl->saveButton, SIGNAL(clicked()), this, SLOT(saveButtonPressed()));
+	connect(mcuControl->mcuButton, SIGNAL(clicked()), this, SLOT(connectMCU()));
+	connect(mcuControl->laserButton, SIGNAL(clicked()), this, SLOT(toggleLaser()));
+	connect(trackerControl->trackerButton, SIGNAL(clicked()), this, SLOT(startTracker()));
+	connect(trackerControl->scanButton, SIGNAL(clicked()), this, SLOT(scanButtonPress()));
 
 	//create trackTimer to refresh the image every x milliseconds depending on the framerate of the camera
 	trackTimer = new QTimer(this);
@@ -217,7 +265,7 @@ void MainWindow::createControlDock()
 
 void MainWindow::startTracker()
 {
-	controlWidget->trackerButton->setChecked(false);
+	trackerControl->trackerButton->setChecked(false);
 	if (!trackerInit)
 	{
 		if (dataCollector->GetDevice(trackerDevice, "TrackerDevice") != PLUS_SUCCESS) {
@@ -307,19 +355,19 @@ void MainWindow::startTracker()
 		if (!playing)
 			trackTimer->start(40); //minimum is 17 ms
 		trackerInit = true;
-		controlWidget->trackerButton->setText(tr("Stop Tracking"));
-		controlWidget->trackerButton->setChecked(true);
+		trackerControl->trackerButton->setText(tr("Stop Tracking"));
+		trackerControl->trackerButton->setChecked(true);
 	}
 
 	else  //already initalized - unitialize...
 	{
 		trackTimer->stop();
 		trackerInit = false;
-		controlWidget->trackerButton->setText(tr("Start Tracking"));
-		controlWidget->trackerButton->setChecked(false);
+		trackerControl->trackerButton->setText(tr("Start Tracking"));
+		trackerControl->trackerButton->setChecked(false);
 		statusBar()->showMessage(tr("Stopping Tracking"), 2000);
-		controlWidget->lightWidgets[0]->setBlue();
-		controlWidget->lightWidgets[1]->setBlue();
+		trackerControl->lightWidgets[0]->setBlue();
+		trackerControl->lightWidgets[1]->setBlue();
 	}
 
 }
@@ -365,32 +413,7 @@ void MainWindow::createVTKObject()
 		cout << "Configuration incorrect for vtkPlusDataCollector." << endl;
 		return;
 	}
-	//6.21962708e+002, 0, 3.18246521e+002, 0, 6.19908875e+002, 2.36307892e+002, 0, 0, 1);
-	//Set point 2 image plane transform explicitly:
-
-	/*
-	point2ImagePlane->SetElement(0, 0, 1);
-	point2ImagePlane->SetElement(0, 1, 0);
-	point2ImagePlane->SetElement(0, 2, 0);
-	point2ImagePlane->SetElement(0, 3, -3.18246521e+002);		//-cx
-	point2ImagePlane->SetElement(1, 0, 0);
-	point2ImagePlane->SetElement(1, 1, 1);
-	point2ImagePlane->SetElement(1, 2, 0);
-	point2ImagePlane->SetElement(1, 3, -2.36307892e+002);		//-cy
-	point2ImagePlane->SetElement(2, 0, 0);
-	point2ImagePlane->SetElement(2, 1, 0);
-	point2ImagePlane->SetElement(2, 2, 6.21962708e+002);			//fx
-	point2ImagePlane->SetElement(2, 3, 0);
-	point2ImagePlane->SetElement(3, 0, 0);
-	point2ImagePlane->SetElement(3, 1, 0);
-	point2ImagePlane->SetElement(3, 2, 0);
-	point2ImagePlane->SetElement(3, 3, 1);
-	vtkMatrix4x4::Invert(point2ImagePlane, imagePlane2Point);	//camera plane to pixel
-	//Handle vtk transform point 2 tracker:
-	//point2Tracker->PostMultiply();
-	*/
-
-
+	
 	intrinsicsMat->SetElement(0, 0, 6.21962708e+002);
 	intrinsicsMat->SetElement(0, 1, 0);
 	intrinsicsMat->SetElement(0, 2, 3.18246521e+002);
@@ -414,7 +437,7 @@ void MainWindow::camera_button_clicked()
 			frameHeight = capture.get(CV_CAP_PROP_FRAME_HEIGHT);
 			framePd = 1000 / (int)capture.get(CV_CAP_PROP_FPS);
 			playing = true;
-			controlWidget->streamButton->setText(tr("Stop Stream"));
+			webcamControl->streamButton->setText(tr("Stop Stream"));
 
 			//Get undistorted transform map first time:
 			capture >> distStreamImg;
@@ -431,7 +454,7 @@ void MainWindow::camera_button_clicked()
 	}
 
 	else {
-		controlWidget->streamButton->setText(tr("Stream Video"));
+		webcamControl->streamButton->setText(tr("Stream Video"));
 		statusBar()->showMessage(tr("Ready"), 7000);
 		playing = false;
 		trackTimer->stop();
@@ -496,8 +519,8 @@ void MainWindow::scanButtonPress()
 	if (!isScanning) {
 		scanTimer = new QTimer(this);
 		connect(scanTimer, SIGNAL(timeout()), this, SLOT(scan()));
-		controlWidget->scanButton->setText(tr("Stop Scan"));
-		controlWidget->scanButton->setChecked(true);
+		trackerControl->scanButton->setText(tr("Stop Scan"));
+		trackerControl->scanButton->setChecked(true);
 		scanTimer->start(30);
 		isScanning = true;
 
@@ -517,8 +540,8 @@ void MainWindow::scanButtonPress()
 
 	}
 	else {
-		controlWidget->scanButton->setText(tr("Start Scan"));
-		controlWidget->scanButton->setChecked(false);
+		trackerControl->scanButton->setText(tr("Start Scan"));
+		trackerControl->scanButton->setChecked(false);
 		scanTimer->stop();
 		savePointCloud();
 		isScanning = false;
@@ -596,15 +619,15 @@ void MainWindow::updateTracker()
 		bool isCameraMatrixValid = false;
 
 		if (repository->GetTransform(laser2TrackerName, laser2Tracker, &isToolMatrixValid) == PLUS_SUCCESS && isToolMatrixValid)
-			controlWidget->lightWidgets[1]->setGreen();
+			trackerControl->lightWidgets[1]->setGreen();
 		else
-			controlWidget->lightWidgets[1]->setRed();
+			trackerControl->lightWidgets[1]->setRed();
 
 		if (repository->GetTransform(camera2TrackerName, camera2Tracker, &isCameraMatrixValid) == PLUS_SUCCESS && isCameraMatrixValid)
-			controlWidget->lightWidgets[0]->setGreen();
+			trackerControl->lightWidgets[0]->setGreen();
 
 		else
-			controlWidget->lightWidgets[0]->setRed();
+			trackerControl->lightWidgets[0]->setRed();
 
 
 		if (repository->GetTransform(normal2TrackerName, normal2Tracker, &isValid) != PLUS_SUCCESS || !isValid) {
@@ -687,7 +710,7 @@ void MainWindow::saveButtonPressed()
 
 			if (gVideoWrite.isOpened())
 			{
-				controlWidget->saveButton->setText("End Saving Video");
+				trackerControl->saveButton->setText("End Saving Video");
 				isReadyToSave = false;
 				isSaving = true;
 			}
@@ -697,7 +720,7 @@ void MainWindow::saveButtonPressed()
 	}
 	else
 	{
-		controlWidget->saveButton->setText("Save Video");
+		trackerControl->saveButton->setText("Save Video");
 		gVideoWrite.release();		//release to close open file and finish saving process
 		isReadyToSave = true;
 		isSaving = false;
@@ -728,12 +751,12 @@ void MainWindow::toggleLaser()
 	if (mcuConnected && !laserOn) {
 		comPort->write("G21");
 		laserOn = true;
-		controlWidget->laserButton->setText(tr("Laser Off"));
+		mcuControl->laserButton->setText(tr("Laser Off"));
 	}
 	else if (mcuConnected && laserOn) {
 		comPort->write("G32");
 		laserOn = false;
-		controlWidget->laserButton->setText(tr("Laser On"));
+		mcuControl->laserButton->setText(tr("Laser On"));
 	}
 	else {
 		statusBar()->showMessage(tr("Connect MCU First"), 2000);
@@ -749,7 +772,7 @@ QImage MainWindow::mat_to_qimage(cv::Mat laserOffImg, QImage::Format format)
 //get serial com port object
 void MainWindow::connectMCU() {
 
-	controlWidget->mcuButton->setChecked(false);
+	mcuControl->mcuButton->setChecked(false);
 	if (!mcuConnected) {
 		bool okay;
 		int portnumber = -1;
@@ -759,8 +782,8 @@ void MainWindow::connectMCU() {
 			comPort = new Serial(portname);	//call Serial constructor in Serial.cpp
 
 		if (comPort->isConnected()) {
-			controlWidget->mcuButton->setText(tr("Disconnect MCU"));
-			controlWidget->mcuButton->setChecked(true);
+			mcuControl->mcuButton->setText(tr("Disconnect MCU"));
+			mcuControl->mcuButton->setChecked(true);
 			statusBar()->showMessage(tr("MCU Connected"), 2000);
 			mcuConnected = true;
 		}
@@ -771,7 +794,7 @@ void MainWindow::connectMCU() {
 		delete comPort;
 		mcuConnected = false;
 		statusBar()->showMessage(tr("MCU Disconnected."), 2000);
-		controlWidget->mcuButton->setText(tr("Connect MCU"));
+		mcuControl->mcuButton->setText(tr("Connect MCU"));
 	}
 }
 
