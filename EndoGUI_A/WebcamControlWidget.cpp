@@ -34,8 +34,7 @@ WebcamControlWidget::WebcamControlWidget(QWidget *parent)
 	brightSlider->setFocusPolicy(Qt::StrongFocus);
 	brightSlider->setTickPosition(QSlider::TicksBelow);
 	brightSlider->setTickInterval(10);
-	brightSlider->setMaximum(100);
-	brightSlider->setMinimum(0);
+	brightSlider->setRange(0, 100);
 	vbox->addWidget(brightSlider);
 
 	vbox->addWidget(spacer);
@@ -50,8 +49,7 @@ WebcamControlWidget::WebcamControlWidget(QWidget *parent)
 	contrastSlider->setFocusPolicy(Qt::StrongFocus);
 	contrastSlider->setTickPosition(QSlider::TicksBelow);
 	contrastSlider->setTickInterval(10);
-	contrastSlider->setMaximum(100);
-	contrastSlider->setMinimum(0);
+	contrastSlider->setRange(0, 100);
 	 
 	vbox->addWidget(contrastSlider); 
 	

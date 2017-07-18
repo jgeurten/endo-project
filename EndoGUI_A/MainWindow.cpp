@@ -272,6 +272,14 @@ void MainWindow::createControlDock()
 	connect(trackerControl->trackerButton, SIGNAL(clicked()), this, SLOT(startTracker()));
 	connect(trackerControl->scanButton, SIGNAL(clicked()), this, SLOT(scanButtonPress()));
 
+	//Set intitial positions:
+	webcamControl->brightSlider->setSliderPosition(brightness);
+	webcamControl->contrastSlider->setSliderPosition(contrast);
+
+	//Connect sliders:
+	connect(webcamControl->brightSlider, SIGNAL(valueChanged(int)), this, SLOT(brightnessChanged(int)));
+	connect(webcamControl->contrastSlider, SIGNAL(valueChanged(int)), this, SLOT(contrastChanged(int)));
+
 	//create trackTimer to refresh the image every x milliseconds depending on the framerate of the camera
 	trackTimer = new QTimer(this);
 	connect(trackTimer, SIGNAL(timeout()), this, SLOT(updateTracker()));
@@ -482,9 +490,6 @@ void MainWindow::update_image()
 
 	if (capture.isOpened())
 	{
-		cv::namedWindow("Control", CV_WINDOW_NORMAL);
-		cvCreateTrackbar("Brightness", "Control", &brightness, 100);
-		cvCreateTrackbar("Contrast", "Control", &contrast, 100);
 		capture.set(CV_CAP_PROP_CONTRAST, (double)contrast);
 		capture.set(CV_CAP_PROP_BRIGHTNESS, (double)brightness);
 
@@ -538,7 +543,6 @@ void MainWindow::scanButtonPress()
 		scanTimer->start(30);
 		isScanning = true;
 
-		
 		string fileLocation = "./Results/Results.csv";
 		ResultsFile.open(fileLocation, ios::out | ios::ate | ios::app | ios::binary);
 
@@ -557,8 +561,9 @@ void MainWindow::scanButtonPress()
 		trackerControl->scanButton->setText(tr("Start Scan"));
 		trackerControl->scanButton->setChecked(false);
 		scanTimer->stop();
-		savePointCloud();
 		isScanning = false;
+		ResultsFile.close(); 
+		savePointCloud();
 	}
 }
 
@@ -571,7 +576,6 @@ void MainWindow::savePointCloud()
 	qDebug() << filename;
 	if (filename.endsWith(".pcd", Qt::CaseInsensitive)) {
 		qDebug() << "Save as pcd file.";
-		ResultsFile.close();
 		//model->savePointCloudAsPCD(filename.toStdString());
 	}
 	else if (filename.endsWith(".ply", Qt::CaseInsensitive)) {
@@ -762,10 +766,12 @@ void MainWindow::paintEvent(QPaintEvent*)
 
 void MainWindow::toggleLaser()
 {
+	mcuControl->laserButton->setChecked(false);
 	if (mcuConnected && !laserOn) {
 		comPort->write("G21");
 		laserOn = true;
 		mcuControl->laserButton->setText(tr("Laser Off"));
+		mcuControl->laserButton->setChecked(true);
 	}
 	else if (mcuConnected && laserOn) {
 		comPort->write("G32");
@@ -1095,4 +1101,14 @@ void MainWindow::saveData(linalg::EndoPt cameraPt, linalg::EndoPt pixelPt, linal
 	ResultsFile << inter.x << ",";
 	ResultsFile << inter.y << ",";
 	ResultsFile << inter.z << endl;
+}
+
+void MainWindow::contrastChanged(int sliderPos)
+{
+	contrast = sliderPos; 
+}
+
+void MainWindow::brightnessChanged(int sliderPos)
+{
+	brightness = sliderPos;
 }

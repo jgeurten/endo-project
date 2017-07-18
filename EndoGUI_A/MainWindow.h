@@ -225,16 +225,13 @@ private:
 	cv::VideoCapture	capture;
 	cv::VideoWriter		gVideoWrite;
 	int					frameWidth, frameHeight;
-	cv::Point pt1;
-	int					scanNumber = 0;
 	int					scancount = 0;
 	int					togglecount = 0;
 	int					brightness = 6;
 	int					contrast = 18;
-	int					prevBrightness = 6;
-	int					prevContrast = 18;
+	
 	ofstream			ResultsFile;
-	double				currentTime, prevTime;
+	
 	linalg::EndoPt camera, normal, origin;
 
 
@@ -261,6 +258,9 @@ private:
 	void framePointsToCloud(cv::Mat &laserOff, cv::Mat &laserOn, int res);//, EndoModel* model);
 	cv::Mat subtractLaser(cv::Mat &laserOff, cv::Mat &laserOn);
 	vector<cv::Vec4i> detectLaserLine(cv::Mat &laserOff, cv::Mat &laserOn);
+	void contrastChanged(int sliderPos);
+	void brightnessChanged(int sliderPos);
+
 	//cv::Mat changeBCImage(int alpha, int beta);
 	//cv::Mat getImg();
 
