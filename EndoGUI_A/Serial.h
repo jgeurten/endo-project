@@ -16,14 +16,21 @@ private:
 
 	bool connected;
 	string portName;
+	string message;
 	int baud;
 	HANDLE hSerial;
+	DWORD numBytesToRead = 3;
+	char buffer[3];
+	OVERLAPPED overlapped = { 0 };
 
 public:
 	Serial(string portName);
 	~Serial();
 	bool write(string message);
 	bool isConnected();
-	
+	string read();
+	void CALLBACK ReadFileCompleted(const DWORD errorCode,
+		const DWORD bytesCopied,
+		OVERLAPPED* overlapped);
 };
 #endif // !SERIAL_H

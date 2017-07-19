@@ -37,7 +37,6 @@
 #include <vtkRenderWindow.h>
 #include <vtkRenderer.h>
 #include <vtkImageImport.h>
-#include <vtk_glew.h>
 #include <vtkMatrix3x3.h>
 #include <vtkTransform.h>
 
@@ -57,7 +56,6 @@
 #include <vtkPlusVolumeReconstructor.h>
 #include <vtkPlusMmfVideoSource.h>
 #include <vtkPlusOpenIGTLinkVideoSource.h>
-#include "C:/RVTK-bin/Deps/Plus-bin/PlusApp/fCal/Toolboxes/QAbstractToolbox.h"
 
 
 //using namespace cv;
@@ -260,7 +258,7 @@ private:
 	vector<cv::Vec4i> detectLaserLine(cv::Mat &laserOff, cv::Mat &laserOn);
 	void contrastChanged(int sliderPos);
 	void brightnessChanged(int sliderPos);
-
+	void checkComPort();
 	//cv::Mat changeBCImage(int alpha, int beta);
 	//cv::Mat getImg();
 

@@ -1,18 +1,9 @@
-/*
-//PCL includes
-#include <pcl/point_cloud.h>
-#include <pcl/kdtree/kdtree_flann.h>
-#include <pcl/features/normal_3d.h>
-#include <pcl/surface/gp3.h>
-#include <pcl/common/common.h>
-#include <pcl/io/pcd_io.h>
-#include <pcl/features/normal_3d_omp.h>
-#include <pcl/surface/mls.h>
-#include <pcl/surface/poisson.h>
-#include <pcl/io/vtk_io.h>
-#include <pcl/io/ply_io.h>
 
-*/
+//PCL includes
+//include "c://Program Files/PCL 1.8.0/include/pcl-1.8/pcl/common/projection_matrix.h"
+#include <pcl/common/projection_matrix.h>
+
+
 //Local includes
 #include "EndoModel.h"
 #include "defines.h"

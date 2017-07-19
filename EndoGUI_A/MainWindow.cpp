@@ -6,7 +6,7 @@
 #include "defines.h"
 #include <EndoModel.h>
 #include <LinAlg.h>
-
+//#include "SerialPort.h"
 
 //OpenCv includes
 #include <opencv2/core/core.hpp>
@@ -40,6 +40,8 @@
 #include <qsize.h>
 #include <QFuture>
 #include <QtConcurrent\qtconcurrentrun.h>
+// #include <QtSerialPort/QSerialPort>
+// #include <QtSerialPort/QSerialPortInfo>
 
 //VTK includes
 #include <vtkProperty.h>
@@ -282,15 +284,44 @@ void MainWindow::createControlDock()
 
 	//create trackTimer to refresh the image every x milliseconds depending on the framerate of the camera
 	trackTimer = new QTimer(this);
-	connect(trackTimer, SIGNAL(timeout()), this, SLOT(updateTracker()));
+	//connect(trackTimer, SIGNAL(timeout()), this, SLOT(updateTracker()));
+	connect(trackTimer, SIGNAL(timeout()), this, SLOT(checkComPort()));
+}
+
+void MainWindow::checkComPort()
+{
+	//QSerialPort serial;
+	//serial.setPortName("COM6");
+	//serial.open(QIODevice::ReadWrite);
+	//serial.setBaudRate(QSerialPort::Baud115200);
+	//serial.setDataBits(QSerialPort::Data8);
+	//serial.setParity(QSerialPort::NoParity);
+	//serial.setStopBits(QSerialPort::OneStop);
+	//serial.setFlowControl(QSerialPort::NoFlowControl);
+	//
+	//if (serial.isOpen() && serial.isWritable())
+	//{
+	//
+	//	QByteArray ba("11");
+	//	serial.write(ba);
+	//	serial.flush();
+	//	qDebug() << "data has been send" << endl;
+	//	serial.close();
+	//}
+	//
+	//else
+	//{
+	//	qDebug() << "An error occured" << endl;
+	//}
 }
 
 void MainWindow::startTracker()
 {
+
 	trackerControl->trackerButton->setChecked(false);
 	if (!trackerInit)
 	{
-		if (dataCollector->GetDevice(trackerDevice, "TrackerDevice") != PLUS_SUCCESS) {
+/*		if (dataCollector->GetDevice(trackerDevice, "TrackerDevice") != PLUS_SUCCESS) {
 			statusBar()->showMessage(tr("Unable to find Tracker device"), 5000);
 			return;
 		}
@@ -372,7 +403,7 @@ void MainWindow::startTracker()
 			statusBar()->showMessage(tr("Unable to locate the channel"), 5000);
 			return;
 		}
-
+*/
 
 		if (!playing)
 			trackTimer->start(40); //minimum is 17 ms
@@ -795,11 +826,11 @@ void MainWindow::connectMCU() {
 	mcuControl->mcuButton->setChecked(false);
 	if (!mcuConnected) {
 		bool okay;
-		int portnumber = -1;
-		portnumber = QInputDialog::getInt(this, tr("Connect MCU"), tr("Enter COM Port #:"), 0, 0, 100, 1, &okay);
+		
+		int portnumber = QInputDialog::getInt(this, tr("Connect MCU"), tr("Enter COM Port #:"), 0, 0, 100, 1, &okay);
 		portname = "COM" + to_string(portnumber);
 		if (okay && portnumber > 0)
-			comPort = new Serial(portname);	//call Serial constructor in Serial.cpp
+			comPort = new Serial(portname);	//call Serial constructor in SerialPort.cpp
 
 		if (comPort->isConnected()) {
 			mcuControl->mcuButton->setText(tr("Disconnect MCU"));

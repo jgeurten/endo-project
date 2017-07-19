@@ -1,6 +1,10 @@
+CMAKE_MINIMUM_REQUIRED(VERSION 3.7.2)
+
 PROJECT(EndoScanner)
 
-CMAKE_MINIMUM_REQUIRED(VERSION 3.7.2)
+FIND_PACKAGE(PCL REQUIRED COMPONENTS common io)
+FIND_PACKAGE(OpenCV REQUIRED NO_MODULE)
+FIND_PACKAGE(PlusLib REQUIRED NO_MODULE)
 
 IF(COMMAND CMAKE_POLICY)
   CMAKE_POLICY(SET CMP0003 NEW)
@@ -9,40 +13,18 @@ ENDIF()
 SET(${PROJECT_NAME}_INCLUDE_DIRS
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${CMAKE_CURRENT_BINARY_DIR}
+  ${PCL_INCLUDE_DIRS}
   )
 
-FIND_PACKAGE(Qt5 REQUIRED COMPONENTS Widgets OpenGL Core Gui Multimedia MultimediaWidgets)
+  message("${PCL_IO_LIBRARIES}")
+FIND_PACKAGE(Qt5 REQUIRED COMPONENTS Widgets OpenGL Core Gui Multimedia MultimediaWidgets )
 SET(CMAKE_AUTOMOC ON)
 SET(CMAKE_AUTOUIC ON)
 SET(CMAKE_AUTORCC ON)
 
-FIND_PACKAGE(OpenCV REQUIRED NO_MODULE)
-FIND_PACKAGE(PlusLib REQUIRED NO_MODULE)
-
-FIND_PACKAGE(vtk REQUIRED)
-
-INCLUDE(${VTK_USE_FILE})
-
-file(GLOB EndoScannerArduinoFirmware_headers RELATIVE "EndoScannerArduinoFirmware" "*.h")
-file(GLOB EndoScannerArduinoFirmware_Sources RELATIVE "EndoScannerArduinoFirmware" "*.cpp")
-
-ADD_EXECUTABLE(EndoScanner
-  #Source files
-  main.cpp
-  MainWindow.cpp
-  Serial.cpp
-  qlightwidget.cpp
-  Controlwidget.cpp
-  EndoModel.cpp
-  ScanClass.cpp
-  MCUControlWidget.cpp
-  WebcamControlWidget.cpp
-
-  ${EndoScannerArduinoFirmware_Sources}
-
-  #Header files
+SET(${PROJECT_NAME}_HDRS
   MainWindow.h
-  Serial.h
+  #Serial.h
   qlightwidget.h
   Controlwidget.h
   EndoModel.h
@@ -51,13 +33,28 @@ ADD_EXECUTABLE(EndoScanner
   ScanClass.h
   MCUControlWidget.h
   WebcamControlWidget.h
-
-  ${EndoScannerArduinoFirmware_headers}
+  #SerialComPort.h
   )
+
+SET(${PROJECT_NAME}_SRCS
+  main.cpp
+  MainWindow.cpp
+  #Serial.cpp
+  qlightwidget.cpp
+  Controlwidget.cpp
+  EndoModel.cpp
+  ScanClass.cpp
+  MCUControlWidget.cpp
+  WebcamControlWidget.cpp
+  #SerialComPort.cpp
+  )
+
+ADD_EXECUTABLE(EndoScanner ${${PROJECT_NAME}_HDRS} ${${PROJECT_NAME}_SRCS})
 
 target_include_directories(EndoScanner PUBLIC 
   ${${PROJECT_NAME}_INCLUDE_DIRS}
   )
+
 TARGET_LINK_LIBRARIES(EndoScanner PUBLIC
   Qt5::Widgets
   Qt5::OpenGL
@@ -65,12 +62,9 @@ TARGET_LINK_LIBRARIES(EndoScanner PUBLIC
   Qt5::Gui
   Qt5::MultimediaWidgets
   Qt5::Multimedia
-  
-  ${OpenCV_LIBS}
-  
 
-  vtksys
-  vtkglew
+  ${OpenCV_LIBS}
+
   vtkPlusCalibration
   vtkPlusCommon
   vtkPlusDataCollection
@@ -80,4 +74,6 @@ TARGET_LINK_LIBRARIES(EndoScanner PUBLIC
   vtkPlusRendering
   vtkPlusServer
 
+  ${PCL_COMMON_LIBRARIES}
+  ${PCL_IO_LIBRARIES}
 )
