@@ -305,13 +305,11 @@ void MainWindow::createControlDock()
 
 	//create trackTimer to refresh the image every x milliseconds depending on the framerate of the camera
 	trackTimer = new QTimer(this);
-<<<<<<< HEAD
+
 	connect(trackTimer, SIGNAL(timeout()), this, SLOT(updateTracker()));
 
-=======
 	//connect(trackTimer, SIGNAL(timeout()), this, SLOT(updateTracker()));
-	connect(trackTimer, SIGNAL(timeout()), this, SLOT(checkComPort()));
->>>>>>> 1d08279b888b8d202becf77f36d8450b7fbd4e9a
+	
 }
 
 void MainWindow::checkComPort()
@@ -347,7 +345,7 @@ void MainWindow::startTracker()
 	trackerControl->trackerButton->setChecked(false);
 	if (!trackerInit)
 	{
-/*		if (dataCollector->GetDevice(trackerDevice, "TrackerDevice") != PLUS_SUCCESS) {
+		if (dataCollector->GetDevice(trackerDevice, "TrackerDevice") != PLUS_SUCCESS) {
 			statusBar()->showMessage(tr("Unable to find Tracker device"), 5000);
 			return;
 		}
@@ -429,7 +427,7 @@ void MainWindow::startTracker()
 			statusBar()->showMessage(tr("Unable to locate the channel"), 5000);
 			return;
 		}
-*/
+
 
 		if (!playing)
 			trackTimer->start(40); //minimum is 17 ms
@@ -872,11 +870,7 @@ void MainWindow::connectMCU() {
 	mcuControl->mcuButton->setChecked(false);
 	if (!mcuConnected) {
 		bool okay;
-<<<<<<< HEAD
 
-=======
-		
->>>>>>> 1d08279b888b8d202becf77f36d8450b7fbd4e9a
 		int portnumber = QInputDialog::getInt(this, tr("Connect MCU"), tr("Enter COM Port #:"), 0, 0, 100, 1, &okay);
 		portname = "COM" + to_string(portnumber);
 		if (okay && portnumber > 0)

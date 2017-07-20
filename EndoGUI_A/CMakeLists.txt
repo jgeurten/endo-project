@@ -2,12 +2,10 @@ CMAKE_MINIMUM_REQUIRED(VERSION 3.7.2)
 
 PROJECT(EndoScanner)
 
-<<<<<<< HEAD
+
 FIND_PACKAGE(PCL REQUIRED NO_MODULE)
 #COMPONENTS common io features recognition)
-=======
-FIND_PACKAGE(PCL REQUIRED COMPONENTS common io)
->>>>>>> 1d08279b888b8d202becf77f36d8450b7fbd4e9a
+
 FIND_PACKAGE(OpenCV REQUIRED NO_MODULE)
 FIND_PACKAGE(PlusLib REQUIRED NO_MODULE)
 
@@ -21,10 +19,9 @@ SET(${PROJECT_NAME}_INCLUDE_DIRS
   ${PCL_INCLUDE_DIRS}
   )
 
-<<<<<<< HEAD
-=======
-  message("${PCL_IO_LIBRARIES}")
->>>>>>> 1d08279b888b8d202becf77f36d8450b7fbd4e9a
+
+ # message("${PCL_IO_LIBRARIES}")
+
 FIND_PACKAGE(Qt5 REQUIRED COMPONENTS Widgets OpenGL Core Gui Multimedia MultimediaWidgets )
 SET(CMAKE_AUTOMOC ON)
 SET(CMAKE_AUTOUIC ON)
@@ -47,11 +44,7 @@ SET(${PROJECT_NAME}_HDRS
 SET(${PROJECT_NAME}_SRCS
   main.cpp
   MainWindow.cpp
-<<<<<<< HEAD
   Serial.cpp
-=======
-  #Serial.cpp
->>>>>>> 1d08279b888b8d202becf77f36d8450b7fbd4e9a
   qlightwidget.cpp
   Controlwidget.cpp
   EndoModel.cpp
@@ -77,11 +70,6 @@ TARGET_LINK_LIBRARIES(EndoScanner PUBLIC
 
   ${OpenCV_LIBS}
 
-<<<<<<< HEAD
-  #vtkPlusCalibration
-=======
-  vtkPlusCalibration
->>>>>>> 1d08279b888b8d202becf77f36d8450b7fbd4e9a
   vtkPlusCommon
   vtkPlusDataCollection
   vtkPlusHaptics
@@ -90,10 +78,7 @@ TARGET_LINK_LIBRARIES(EndoScanner PUBLIC
   vtkPlusRendering
   #vtkPlusServer
 
-<<<<<<< HEAD
   ${PCL_LIBRARIES}
-=======
-  ${PCL_COMMON_LIBRARIES}
-  ${PCL_IO_LIBRARIES}
->>>>>>> 1d08279b888b8d202becf77f36d8450b7fbd4e9a
+
+  
 )

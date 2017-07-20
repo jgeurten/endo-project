@@ -55,10 +55,7 @@
 #include <vtkPlusNDITracker.h>
 #include <vtkPlusVolumeReconstructor.h>
 #include <vtkPlusMmfVideoSource.h>
-<<<<<<< HEAD
-=======
 #include <vtkPlusOpenIGTLinkVideoSource.h>
->>>>>>> 1d08279b888b8d202becf77f36d8450b7fbd4e9a
 
 
 //using namespace cv;

@@ -1,6 +1,5 @@
 
 //PCL includes
-<<<<<<< HEAD
 #include <pcl/common/projection_matrix.h>
 //#include <pcl/impl/point_types.hpp>
 #include <pcl/io/pcd_io.h>
@@ -13,10 +12,6 @@
 
 //boost
 #include <boost/thread/thread.hpp>
-=======
-//include "c://Program Files/PCL 1.8.0/include/pcl-1.8/pcl/common/projection_matrix.h"
-#include <pcl/common/projection_matrix.h>
->>>>>>> 1d08279b888b8d202becf77f36d8450b7fbd4e9a
 
 
 //Local includes
