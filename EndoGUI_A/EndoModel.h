@@ -4,7 +4,7 @@
 
 #include <Vision.h>
 #include <LinAlg.h>
-/*
+
 //PCL includes
 #include <pcl/point_cloud.h>
 #include <pcl/kdtree/kdtree_flann.h>
@@ -16,7 +16,7 @@
 #include <pcl/surface/mls.h>
 #include <pcl/surface/poisson.h>
 #include <pcl/io/vtk_io.h>
-*/
+
 #include <iostream>
 #include <fstream>
 
@@ -28,16 +28,21 @@ private:
 
 public:
 
-	EndoModel();
-	//void convertPointCloudToSurfaceMesh();
-	//void savePointCloudAsPLY(string &filename); 
-	//void savePointCloudAsPCD(string &filename);
-	//void addPointToPointCloud(EndoPt point);
-	//void saveData(linalg::EndoPt point);
+	pcl::PointCloud<pcl::PointXYZ>::Ptr pointCloud;
+	pcl::PolygonMesh surfaceMesh; 
 
-	ofstream myfile;
-	//pcl::PointCloud<pcl::PointXYZ> *pointCloud;
-	int test; 
+	EndoModel();
+	void addPointToPointCloud(linalg::EndoPt point);
+
+	void savePointCloudAsPLY(string &filename); 
+	void savePointCloudAsPCD(string &filename);
+	void saveMesh(string &filename);
+	void removeOutliers(int meanK, float SD);
+	size_t getCloudSize(); 
+	void convertCloudToSurface();
+
+//Static functions:	
+	static void viewPointCloud(string &filename, int fileType);
 };
 
 #endif // !ENDOMODEL_H

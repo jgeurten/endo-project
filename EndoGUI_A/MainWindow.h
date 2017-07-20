@@ -37,7 +37,6 @@
 #include <vtkRenderWindow.h>
 #include <vtkRenderer.h>
 #include <vtkImageImport.h>
-#include <vtk_glew.h>
 #include <vtkMatrix3x3.h>
 #include <vtkTransform.h>
 
@@ -56,8 +55,6 @@
 #include <vtkPlusNDITracker.h>
 #include <vtkPlusVolumeReconstructor.h>
 #include <vtkPlusMmfVideoSource.h>
-#include <vtkPlusOpenIGTLinkVideoSource.h>
-#include "C:/RVTK-bin/Deps/Plus-bin/PlusApp/fCal/Toolboxes/QAbstractToolbox.h"
 
 
 //using namespace cv;
@@ -98,6 +95,7 @@ private:
 	void createVTKObject();
 
 	QMenu			*fileMenu;
+	QMenu			*scanMenu;
 	QMenu			*helpMenu;
 	QMenu			*cameraMenu;
 	QAction			*openAct;
@@ -107,6 +105,8 @@ private:
 	QAction			*helpAct;
 	QAction			*webcam;
 	QAction			*endoCam;
+	QAction			*saveScanData;
+	QAction			*surfMesh;
 
 	QWidget			*videoWidget;
 	QPushButton		*pushButton;
@@ -132,7 +132,7 @@ private:
 	QSize			*size;
 	QThread			*streamThread;
 
-	EndoModel		*model;
+	EndoModel		*Model;
 
 
 	// Plus members
@@ -204,12 +204,12 @@ private:
 	vtkPlusNDITracker								*ndiTracker;
 	vtkPlusMmfVideoSource							*webcamVideo;
 	vtkPlusMmfVideoSource							*endoVideo;
-	vtkPlusOpenIGTLinkVideoSource					*ultrasoundVideo;
 
 	QImage mat_to_qimage(cv::Mat frame, QImage::Format format);
 
 	int					framePd;	// period of frame rate
-	bool				trackReady, isReadyToSave, isSaving, playing, mcuConnected, laserOn, trackerInit, isScanning;
+	bool				trackReady, isReadyToSave, isSaving, playing, mcuConnected, laserOn, trackerInit, isScanning, 
+							saveDataBool, saveAsMesh;
 	int dimensions[3];
 
 	vector<cv::Vec4i>	lines;
@@ -239,16 +239,19 @@ private:
 
 	void toggleLaser();
 	void camera_button_clicked();
-
+	
 	void saveButtonPressed();
 	void connectMCU();
 	void startTracker();
 	void scanButtonPress();
 	void scan();
+	void viewCloudClicked();
+	void surfMeshClicked(bool);
 	void camWebcam(bool);
 	void camEndocam(bool);
+	void saveDataClicked(bool);
 	void updateTracker();
-	void savePointCloud();
+	string savePointCloud();
 	void saveData(linalg::EndoPt camera, linalg::EndoPt pixel, linalg::EndoPt normal, linalg::EndoPt origin, linalg::EndoLine camLine,
 		int col, int row, linalg::EndoPt calcPixel, linalg::EndoPt inter);
 	void update_image();
@@ -260,7 +263,7 @@ private:
 	vector<cv::Vec4i> detectLaserLine(cv::Mat &laserOff, cv::Mat &laserOn);
 	void contrastChanged(int sliderPos);
 	void brightnessChanged(int sliderPos);
-
+	void checkComPort();
 	//cv::Mat changeBCImage(int alpha, int beta);
 	//cv::Mat getImg();
 

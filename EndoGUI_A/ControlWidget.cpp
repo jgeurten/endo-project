@@ -38,6 +38,12 @@ ControlWidget::ControlWidget(QWidget *parent)
 
 	vbox->addWidget(spacer);
 
+	viewCloud = new QPushButton;
+	viewCloud->setCheckable(true);
+	viewCloud->setChecked(false);
+	viewCloud->setText(tr("View Cloud"));
+	vbox->addWidget(viewCloud);
+
 	QHBoxLayout *hbox = new QHBoxLayout;
 	QLabel *label = new QLabel;
 	QLightWidget *lw = new QLightWidget;

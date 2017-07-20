@@ -29,6 +29,7 @@ public:
 	QPushButton								*saveButton;
 	QPushButton								*trackerButton;
 	QPushButton								*scanButton; 
+	QPushButton								*viewCloud;
 
 };
 #endif // !CONTROLWIDGET_H

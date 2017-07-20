@@ -19,18 +19,18 @@ Serial::Serial(std::string portName)
 	this->connected = false;
 
 	//use create file function to establish serial connection
-		
+
 	this->hSerial = CreateFile(portName.c_str(),
 		GENERIC_WRITE,					//desired connection = write only (generic_read)
 		0,								//sharemode = 0: prevents other processes from connecting
-		NULL,							
+		NULL,
 		OPEN_EXISTING,					//opens file only if it exists
 		FILE_ATTRIBUTE_NORMAL,
 		NULL);
 
 	if (this->hSerial != "INVALID_HANDLE_VALUE")	//port exists and connected
 	{
-			
+
 		// set comm parameters:
 		DCB dcbParams = { 0 };
 
@@ -68,11 +68,11 @@ Serial::~Serial()
 	}
 }
 
-bool Serial::write(string message)	
+bool Serial::write(string message)
 {
-	DWORD numBytesWritten; 
+	DWORD numBytesWritten;
 	int nbtoWrite = message.length();
-	
+
 	WriteFile(hSerial, message.c_str(), nbtoWrite, &numBytesWritten, NULL); //3rd argument set to NULL if asynchronous
 	if (numBytesWritten > 0) return true;
 	else return false;

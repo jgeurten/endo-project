@@ -6,7 +6,7 @@
 #include "defines.h"
 #include <EndoModel.h>
 #include <LinAlg.h>
-
+//#include "SerialPort.h"
 
 //OpenCv includes
 #include <opencv2/core/core.hpp>
@@ -40,6 +40,8 @@
 #include <qsize.h>
 #include <QFuture>
 #include <QtConcurrent\qtconcurrentrun.h>
+// #include <QtSerialPort/QSerialPort>
+// #include <QtSerialPort/QSerialPortInfo>
 
 //VTK includes
 #include <vtkProperty.h>
@@ -91,7 +93,7 @@
 using namespace std;
 
 class ControlWidget;
-class MCUControlWidget; 
+class MCUControlWidget;
 
 MainWindow::MainWindow(QWidget *parent)
 	:QMainWindow(parent)
@@ -104,6 +106,8 @@ MainWindow::MainWindow(QWidget *parent)
 	laserOn = false;
 	trackerInit = false;
 	isScanning = false;
+	saveDataBool = true;
+	saveAsMesh = true; 
 
 	trackReady = false;
 	//cv::VideoCapture capture = new cv::VideoCapture();
@@ -160,6 +164,24 @@ void MainWindow::createMenus()
 	cameraMenu->addAction(webcam);
 	cameraMenu->addAction(endoCam);
 
+	//Scan menu actions
+	saveScanData = new QAction(tr("Save CSV"), this);
+	saveScanData->setCheckable(true);
+	saveScanData->setChecked(true);
+	connect(saveScanData, SIGNAL(toggled(bool)), this, SLOT(saveDataClicked(bool)));
+
+	surfMesh = new QAction(tr("Save Mesh"), this);
+	surfMesh->setCheckable(true);
+	surfMesh->setChecked(true);
+	connect(surfMesh, SIGNAL(toggled(bool)), this, SLOT(surfMeshClicked(bool)));
+
+
+	//Scan menu:
+
+	scanMenu = menuBar()->addMenu(tr("&Scan"));
+	scanMenu->addAction(saveScanData);
+	scanMenu->addAction(surfMesh);
+
 	//Help menu actions:
 	aboutAct = new QAction(tr("&About"), this);
 	aboutAct->setStatusTip(tr("About application"));
@@ -183,12 +205,12 @@ void MainWindow::createStatusBar()
 void MainWindow::createControlDock()
 {
 	//Create dock for webcam controller:
-	webcamDock = new QDockWidget( this);
+	webcamDock = new QDockWidget(this);
 	webcamDock->setAllowedAreas(Qt::LeftDockWidgetArea);
 	webcamDock->setFeatures(QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetFloatable);
 	addDockWidget(Qt::LeftDockWidgetArea, webcamDock);
 	webcamDock->setMinimumWidth(180);
-	webcamDock->setMaximumWidth(300); 
+	webcamDock->setMaximumWidth(300);
 
 	QLabel *wlabel = new QLabel("Webcam Controls", webcamDock);
 	wlabel->setStyleSheet("font-size: 10pt; font-weight: bold;");
@@ -211,7 +233,7 @@ void MainWindow::createControlDock()
 
 
 	//Create dock for laser controller:
-	mcuDock = new QDockWidget( this);
+	mcuDock = new QDockWidget(this);
 	mcuDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
 	mcuDock->setFeatures(QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetFloatable);
 	addDockWidget(Qt::LeftDockWidgetArea, mcuDock);
@@ -238,7 +260,7 @@ void MainWindow::createControlDock()
 
 
 	//Tracker controller:
-	trackerDock = new QDockWidget( this);
+	trackerDock = new QDockWidget(this);
 	trackerDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
 	trackerDock->setFeatures(QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetFloatable);
 	addDockWidget(Qt::LeftDockWidgetArea, trackerDock);
@@ -254,7 +276,7 @@ void MainWindow::createControlDock()
 	trackerControlsLayout->setMargin(0);
 	trackerControlsLayout->setSpacing(10);
 	trackerControlsLayout->setAlignment(Qt::AlignTop);
-	
+
 	QFrame* trackerFrame = new QFrame;
 	trackerFrame->setFrameStyle(QFrame::WinPanel | QFrame::Sunken);
 	trackerFrame->setLineWidth(2);
@@ -271,6 +293,7 @@ void MainWindow::createControlDock()
 	connect(mcuControl->laserButton, SIGNAL(clicked()), this, SLOT(toggleLaser()));
 	connect(trackerControl->trackerButton, SIGNAL(clicked()), this, SLOT(startTracker()));
 	connect(trackerControl->scanButton, SIGNAL(clicked()), this, SLOT(scanButtonPress()));
+	connect(trackerControl->viewCloud, SIGNAL(clicked()), this, SLOT(viewCloudClicked()));
 
 	//Set intitial positions:
 	webcamControl->brightSlider->setSliderPosition(brightness);
@@ -283,10 +306,39 @@ void MainWindow::createControlDock()
 	//create trackTimer to refresh the image every x milliseconds depending on the framerate of the camera
 	trackTimer = new QTimer(this);
 	connect(trackTimer, SIGNAL(timeout()), this, SLOT(updateTracker()));
+
+}
+
+void MainWindow::checkComPort()
+{
+	//QSerialPort serial;
+	//serial.setPortName("COM6");
+	//serial.open(QIODevice::ReadWrite);
+	//serial.setBaudRate(QSerialPort::Baud115200);
+	//serial.setDataBits(QSerialPort::Data8);
+	//serial.setParity(QSerialPort::NoParity);
+	//serial.setStopBits(QSerialPort::OneStop);
+	//serial.setFlowControl(QSerialPort::NoFlowControl);
+	//
+	//if (serial.isOpen() && serial.isWritable())
+	//{
+	//
+	//	QByteArray ba("11");
+	//	serial.write(ba);
+	//	serial.flush();
+	//	qDebug() << "data has been send" << endl;
+	//	serial.close();
+	//}
+	//
+	//else
+	//{
+	//	qDebug() << "An error occured" << endl;
+	//}
 }
 
 void MainWindow::startTracker()
 {
+
 	trackerControl->trackerButton->setChecked(false);
 	if (!trackerInit)
 	{
@@ -396,10 +448,6 @@ void MainWindow::startTracker()
 
 void MainWindow::createVTKObject()
 {
-	//not sure this is used :
-
-	//intrinsicsFile = "./config/calibration.xml";
-
 	if (webcam->isChecked())
 		configFile = "./config/configWebcam.xml";
 
@@ -435,7 +483,7 @@ void MainWindow::createVTKObject()
 		cout << "Configuration incorrect for vtkPlusDataCollector." << endl;
 		return;
 	}
-	
+
 	intrinsicsMat->SetElement(0, 0, 6.21962708e+002);
 	intrinsicsMat->SetElement(0, 1, 0);
 	intrinsicsMat->SetElement(0, 2, 3.18246521e+002);
@@ -543,6 +591,9 @@ void MainWindow::scanButtonPress()
 		scanTimer->start(30);
 		isScanning = true;
 
+		//create new instance of model to add points
+		Model = new EndoModel();
+
 		string fileLocation = "./Results/Results.csv";
 		ResultsFile.open(fileLocation, ios::out | ios::ate | ios::app | ios::binary);
 
@@ -556,31 +607,52 @@ void MainWindow::scanButtonPress()
 			<< "U," << "V," << "Calc U," << "Calc V,"
 			<< "Intersection X," << "Y," << "Z" << endl;
 
+
 	}
 	else {
 		trackerControl->scanButton->setText(tr("Start Scan"));
 		trackerControl->scanButton->setChecked(false);
 		scanTimer->stop();
+		
+		//Turn off laser if still on at end of scan.
+		if (laserOn)
+			toggleLaser();
+
 		isScanning = false;
-		ResultsFile.close(); 
-		savePointCloud();
+		ResultsFile.close();
+
+		//Remove outliers and down sample point cloud before saving
+		int meanNN = 50; 
+		float StdDev = 1.0;
+		statusBar()->showMessage(tr("Filtering Point Cloud. Please wait."), 8000); 
+		Model->removeOutliers(meanNN, StdDev);	//updates pointcloud to point to a filtered pt cloud
+
+		string filename = savePointCloud();
+		//convert to surface mesh and save, if enabled
+		if (saveAsMesh) {
+			statusBar()->showMessage(tr("Converting Point Cloud to Surface Mesh. This can take awhile."), 15000);
+			Model->convertCloudToSurface();
+			Model->saveMesh(filename);
+		}
 	}
 }
 
-void MainWindow::savePointCloud()
+string MainWindow::savePointCloud()
 {
 
-	QString filename = QFileDialog::getSaveFileName(this, "Save File", "", "PCD (*.pcd) ;; PLY (*.ply)");
+	QString filename = QFileDialog::getSaveFileName(this, "Save File", tr("./Results"), "PCD (*.pcd) ;; PLY (*.ply)");
 
-	if (filename.isEmpty()) return;
+	if (filename.isEmpty()) return "";
 	qDebug() << filename;
 	if (filename.endsWith(".pcd", Qt::CaseInsensitive)) {
 		qDebug() << "Save as pcd file.";
-		//model->savePointCloudAsPCD(filename.toStdString());
+		Model->savePointCloudAsPCD(filename.toStdString());
+		return filename.toStdString();
 	}
 	else if (filename.endsWith(".ply", Qt::CaseInsensitive)) {
 		qDebug() << "Save as ply file.";
-		//model->savePointCloudAsPLY(filename.toStdString());
+		Model->savePointCloudAsPLY(filename.toStdString());
+		return filename.toStdString();
 	}
 }
 
@@ -795,11 +867,11 @@ void MainWindow::connectMCU() {
 	mcuControl->mcuButton->setChecked(false);
 	if (!mcuConnected) {
 		bool okay;
-		int portnumber = -1;
-		portnumber = QInputDialog::getInt(this, tr("Connect MCU"), tr("Enter COM Port #:"), 0, 0, 100, 1, &okay);
+
+		int portnumber = QInputDialog::getInt(this, tr("Connect MCU"), tr("Enter COM Port #:"), 0, 0, 100, 1, &okay);
 		portname = "COM" + to_string(portnumber);
 		if (okay && portnumber > 0)
-			comPort = new Serial(portname);	//call Serial constructor in Serial.cpp
+			comPort = new Serial(portname);	//call Serial constructor in SerialPort.cpp
 
 		if (comPort->isConnected()) {
 			mcuControl->mcuButton->setText(tr("Disconnect MCU"));
@@ -816,6 +888,28 @@ void MainWindow::connectMCU() {
 		statusBar()->showMessage(tr("MCU Disconnected."), 2000);
 		mcuControl->mcuButton->setText(tr("Connect MCU"));
 	}
+}
+
+void MainWindow::viewCloudClicked()
+{
+
+	trackerControl->viewCloud->setChecked(false);
+	if (isScanning) 
+		return;
+	QString filename = QFileDialog::getOpenFileName(this, tr("Open File"),
+		"./Results", tr("3D Scan Files (*.pcd *.ply *.OBJ)"));
+
+	if (filename.isEmpty())
+		return;
+	
+	if (filename.endsWith(".pcd", Qt::CaseInsensitive))
+		EndoModel::viewPointCloud(filename.toStdString(), 1);
+
+	else if (filename.endsWith(".ply", Qt::CaseInsensitive))
+		EndoModel::viewPointCloud(filename.toStdString(), 2);
+
+	else 
+		EndoModel::viewPointCloud(filename.toStdString(), 3);
 }
 
 void MainWindow::camWebcam(bool checked)
@@ -861,6 +955,26 @@ void MainWindow::camWebcam(bool checked)
 
 
 }
+
+void MainWindow::saveDataClicked(bool checked)
+{
+	saveDataBool = !saveDataBool;
+	if (!saveDataBool)
+		saveScanData->setChecked(false);
+	else
+		saveScanData->setChecked(true);
+
+}
+
+void MainWindow::surfMeshClicked(bool checked)
+{
+	saveAsMesh = !saveAsMesh; 
+	if (saveAsMesh)
+		surfMesh->setChecked(true);
+	else
+		surfMesh->setChecked(false); 
+}
+
 
 void MainWindow::camEndocam(bool checked)
 {
@@ -968,7 +1082,6 @@ vector<cv::Vec4i> MainWindow::detectLaserLine(cv::Mat &laserOff, cv::Mat &laserO
 
 void MainWindow::framePointsToCloud(cv::Mat &laserOn, cv::Mat &laserOff, int res)//, EndoModel* model)
 {
-	//EndoModel* model = new EndoModel(); 
 	//check if able to transform all entities into tracker space
 	if (!trackReady)
 	{
@@ -1000,7 +1113,9 @@ void MainWindow::framePointsToCloud(cv::Mat &laserOn, cv::Mat &laserOff, int res
 				}
 				else {
 					calcPixel = validatePixel(intersection);
-					saveData(camera, pixel, normal, origin, camLine, col, row, calcPixel, intersection);
+					Model->addPointToPointCloud(intersection);
+					if (saveDataBool)
+						saveData(camera, pixel, normal, origin, camLine, col, row, calcPixel, intersection);
 				}
 			}
 		}
@@ -1059,7 +1174,7 @@ void MainWindow::about()
 void MainWindow::saveData(linalg::EndoPt cameraPt, linalg::EndoPt pixelPt, linalg::EndoPt normalPt, linalg::EndoPt originPt, linalg::EndoLine cameraline,
 	int col, int row, linalg::EndoPt calcPixel, linalg::EndoPt inter)
 {
-	
+
 	//CAM:
 	ResultsFile << cameraPt.x << ",";
 	ResultsFile << cameraPt.y << ",";
@@ -1105,7 +1220,7 @@ void MainWindow::saveData(linalg::EndoPt cameraPt, linalg::EndoPt pixelPt, linal
 
 void MainWindow::contrastChanged(int sliderPos)
 {
-	contrast = sliderPos; 
+	contrast = sliderPos;
 }
 
 void MainWindow::brightnessChanged(int sliderPos)
