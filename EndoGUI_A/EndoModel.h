@@ -29,7 +29,7 @@ private:
 public:
 
 	pcl::PointCloud<pcl::PointXYZ>::Ptr pointCloud;
-	pcl::PolygonMesh surfaceMesh; 
+	pcl::PolygonMesh::Ptr surfaceMesh; 
 
 	EndoModel();
 	void addPointToPointCloud(linalg::EndoPt point);

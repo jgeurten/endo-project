@@ -9,6 +9,10 @@
 #include <pcl/filters/statistical_outlier_removal.h>
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/PolygonMesh.h>
+#include <pcl/visualization/pcl_visualizer.h>
+#include <pcl/common/common_headers.h>
+#include <pcl/features/normal_3d.h>
+#include <pcl/console/parse.h>
 
 //boost
 #include <boost/thread/thread.hpp>
@@ -36,7 +40,12 @@ EndoModel::EndoModel()
 {
 	pointCloud.reset(new pcl::PointCloud<pcl::PointXYZ>);
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
-	this->pointCloud = cloud;
+	this->pointCloud = cloud;			//May be redundant
+
+	surfaceMesh.reset(new pcl::PolygonMesh); 
+	pcl::PolygonMesh::Ptr _surfMesh(new pcl::PolygonMesh); 
+	this->surfaceMesh = _surfMesh;
+
 }
 
 void EndoModel::addPointToPointCloud(linalg::EndoPt point)
@@ -65,7 +74,7 @@ void EndoModel::savePointCloudAsPCD(string &filename)
 void EndoModel::saveMesh(string &filename)
 {
 	if (pointCloud->size() == 0) return;		//point cloud will be non-null since pointcloud is converted to polygon mesh.
-	pcl::io::saveOBJFile(filename, surfaceMesh);
+	pcl::io::saveOBJFile(filename, *surfaceMesh);
 }
 
 void EndoModel::viewPointCloud(string &filename, int fileType)	//filetype 1:pcd, 2:ply
@@ -102,13 +111,13 @@ void EndoModel::viewPointCloud(string &filename, int fileType)	//filetype 1:pcd,
 	}
 
 	if (fileType == 3) {		//view mesh
-		pcl::PolygonMesh::Ptr mesh;
-		if (pcl::io::loadOBJFile(filename, *mesh) == -1) {
+		pcl::PolygonMesh mesh;
+		if (pcl::io::loadOBJFile(filename, mesh) == -1) {
 			ERROR("Unable to read file:", filename);
 			return;
 		}
 
-		viewer->addPolygonMesh(*mesh, "mesh", 0);
+		viewer->addPolygonMesh(mesh, "mesh", 0);
 		//setpointcloudrendering can still be used while using add polygon mesh
 		viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY, 0.5, "mesh");	
 	}
@@ -118,7 +127,8 @@ void EndoModel::viewPointCloud(string &filename, int fileType)	//filetype 1:pcd,
 
 	while (!viewer->wasStopped())
 	{
-
+		viewer->spinOnce(100);
+		boost::this_thread::sleep(boost::posix_time::microseconds(100000));
 	};
 }
 
@@ -178,9 +188,10 @@ void EndoModel::convertCloudToSurface()
 
 	//SEt traingulation params:
 	pcl::GreedyProjectionTriangulation<pcl::PointNormal> gp3;
-	gp3.setSearchRadius(0.025);					//max search radius between connected pts
+	gp3.setSearchRadius(15.00);					//max search radius between connected pts
 	gp3.setMu(2.5);								//sets multiplier for calc of final search radius
 	gp3.setMaximumSurfaceAngle(M_PI / 4);		// 45 degrees
+	gp3.setMaximumNearestNeighbors(100);
 	gp3.setMinimumAngle(M_PI / 18);				// 10 degrees
 	gp3.setMaximumAngle(2 * M_PI / 3);			// 120 degrees
 	gp3.setNormalConsistency(false);			//consistent normal orientation
@@ -191,5 +202,5 @@ void EndoModel::convertCloudToSurface()
 	gp3.setSearchMethod(searchTree);
 	gp3.reconstruct(_surfaceMesh);
 	
-	this->surfaceMesh = _surfaceMesh;			//populate global variable  
+	*surfaceMesh = _surfaceMesh;			//populate global variable  
 }

@@ -635,7 +635,9 @@ void MainWindow::scanButtonPress()
 		if (saveAsMesh) {
 			statusBar()->showMessage(tr("Converting Point Cloud to Surface Mesh. This can take awhile."), 15000);
 			Model->convertCloudToSurface();
-			Model->saveMesh(filename);
+			string st = filename.substr(0, filename.size() - 3);
+			string filenameOBJ = st + "OBJ"; 
+			Model->saveMesh(filenameOBJ);
 		}
 	}
 }
