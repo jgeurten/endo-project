@@ -13,6 +13,7 @@
 #include <pcl/common/common_headers.h>
 #include <pcl/features/normal_3d.h>
 #include <pcl/console/parse.h>
+#include <pcl/common/centroid.h>
 
 //boost
 #include <boost/thread/thread.hpp>
@@ -77,7 +78,7 @@ void EndoModel::saveMesh(string &filename)
 	pcl::io::saveOBJFile(filename, *surfaceMesh);
 }
 
-void EndoModel::viewPointCloud(string &filename, int fileType)	//filetype 1:pcd, 2:ply
+void EndoModel::viewPointCloud(string &filename, int fileType, linalg::EndoPt camera)	//filetype 1:pcd, 2:ply
 {
 	//create instance of pcloud visualizer
 
@@ -87,6 +88,7 @@ void EndoModel::viewPointCloud(string &filename, int fileType)	//filetype 1:pcd,
 	if (fileType < 3) {	//PLY or PCL -> view simply point cloud
 
 		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+		
 		if (fileType == 1) {
 			if (pcl::io::loadPCDFile<pcl::PointXYZ>(filename, *cloud) == -1)	//store in pcloud ptr
 			{
@@ -107,7 +109,7 @@ void EndoModel::viewPointCloud(string &filename, int fileType)	//filetype 1:pcd,
 		}
 
 		viewer->addPointCloud<pcl::PointXYZ>(cloud, "sample cloud");
-		viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "sample cloud");
+		viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 5, "sample cloud");
 	}
 
 	if (fileType == 3) {		//view mesh
@@ -119,12 +121,12 @@ void EndoModel::viewPointCloud(string &filename, int fileType)	//filetype 1:pcd,
 
 		viewer->addPolygonMesh(mesh, "mesh", 0);
 		//setpointcloudrendering can still be used while using add polygon mesh
-		viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY, 0.5, "mesh");	
+		viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY, 0.9, "mesh");	
 	}
 
 	viewer->addCoordinateSystem(1.0);// , origin.x, origin.y, origin.z);
 	viewer->initCameraParameters();
-
+	viewer->setCameraPosition(camera.x, camera.y, camera.z, camera.x, camera.y, camera.z );
 	while (!viewer->wasStopped())
 	{
 		viewer->spinOnce(100);
@@ -171,16 +173,32 @@ void EndoModel::convertCloudToSurface()
 	pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
 	pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
 
+	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+	
+	cloud->points.resize(pointCloud->size());
+	for (size_t i = 0; i < pointCloud->points.size(); i++) {
+		cloud->points[i].x = pointCloud->points[i].x;
+		cloud->points[i].y = pointCloud->points[i].y;
+		cloud->points[i].z = pointCloud->points[i].z;
+	}
+
+
 	int ksearch = 20;
-	tree->setInputCloud(pointCloud);
-	norm.setInputCloud(pointCloud);
+	tree->setInputCloud(cloud);
+	norm.setInputCloud(cloud);
 	norm.setSearchMethod(tree);
+
+	Eigen::Vector4f centroid;
+	//pcl::compute3DCentroid(//(pointCloud, centroid);
+	pcl::compute3DCentroid(*cloud, centroid);
+	//norm.setViewPoint(centroid[0], centroid[1], centroid[2]);
+
 	norm.setKSearch(ksearch);
 	norm.compute(*normals);
 
 	//Add point cloud and normals:
 	pcl::PointCloud<pcl::PointNormal>::Ptr cloudAndNormals(new pcl::PointCloud<pcl::PointNormal>);
-	pcl::concatenateFields(*pointCloud, *normals, *cloudAndNormals);
+	pcl::concatenateFields(*cloud, *normals, *cloudAndNormals);
 
 	//Create tree:
 	pcl::search::KdTree<pcl::PointNormal>::Ptr searchTree(new pcl::search::KdTree<pcl::PointNormal>);
@@ -188,7 +206,7 @@ void EndoModel::convertCloudToSurface()
 
 	//SEt traingulation params:
 	pcl::GreedyProjectionTriangulation<pcl::PointNormal> gp3;
-	gp3.setSearchRadius(15.00);					//max search radius between connected pts
+	gp3.setSearchRadius(0.5);					//max search radius between connected pts
 	gp3.setMu(2.5);								//sets multiplier for calc of final search radius
 	gp3.setMaximumSurfaceAngle(M_PI / 4);		// 45 degrees
 	gp3.setMaximumNearestNeighbors(100);

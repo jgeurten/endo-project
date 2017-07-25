@@ -16,6 +16,7 @@
 #include <pcl/surface/mls.h>
 #include <pcl/surface/poisson.h>
 #include <pcl/io/vtk_io.h>
+#include <pcl/common/common_headers.h>
 
 #include <iostream>
 #include <fstream>
@@ -42,7 +43,7 @@ public:
 	void convertCloudToSurface();
 
 //Static functions:	
-	static void viewPointCloud(string &filename, int fileType);
+	static void viewPointCloud(string &filename, int fileType, linalg::EndoPt camera);
 };
 
 #endif // !ENDOMODEL_H

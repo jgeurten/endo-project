@@ -63,6 +63,8 @@
 #include <vtkMatrix4x4.h>
 #include <vtkVector.h>
 
+
+
 // Plus
 #include <vtkPlusNDITracker.h>
 #include "PlusTrackedFrame.h"
@@ -79,6 +81,20 @@
 #include "C:/RVTK-bin/Deps/Plus-bin/PlusApp/fCal/Toolboxes/QAbstractToolbox.h"
 #include "PlusMath.h"
 #include "PlusXMLUtils.h"
+
+//PCL
+#include <pcl/common/projection_matrix.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/io/ply_io.h>
+#include <pcl/io/obj_io.h>
+#include <pcl/visualization/cloud_viewer.h>
+#include <pcl/filters/statistical_outlier_removal.h>
+#include <pcl/filters/voxel_grid.h>
+#include <pcl/PolygonMesh.h>
+#include <pcl/visualization/pcl_visualizer.h>
+#include <pcl/common/common_headers.h>
+#include <pcl/features/normal_3d.h>
+#include <pcl/console/parse.h>
 
 
 //MSDN includes
@@ -107,7 +123,7 @@ MainWindow::MainWindow(QWidget *parent)
 	trackerInit = false;
 	isScanning = false;
 	saveDataBool = true;
-	saveAsMesh = true; 
+	saveAsMesh = true;
 
 	trackReady = false;
 	//cv::VideoCapture capture = new cv::VideoCapture();
@@ -309,7 +325,7 @@ void MainWindow::createControlDock()
 	connect(trackTimer, SIGNAL(timeout()), this, SLOT(updateTracker()));
 
 	//connect(trackTimer, SIGNAL(timeout()), this, SLOT(updateTracker()));
-	
+
 }
 
 void MainWindow::checkComPort()
@@ -616,7 +632,7 @@ void MainWindow::scanButtonPress()
 		trackerControl->scanButton->setText(tr("Start Scan"));
 		trackerControl->scanButton->setChecked(false);
 		scanTimer->stop();
-		
+
 		//Turn off laser if still on at end of scan.
 		if (laserOn)
 			toggleLaser();
@@ -625,9 +641,10 @@ void MainWindow::scanButtonPress()
 		ResultsFile.close();
 
 		//Remove outliers and down sample point cloud before saving
-		int meanNN = 50; 
+		int meanNN = 50;
 		float StdDev = 1.0;
-		statusBar()->showMessage(tr("Filtering Point Cloud. Please wait."), 8000); 
+		statusBar()->showMessage(tr("Filtering Point Cloud. Please wait."), 8000);
+		//Want to see raw PC
 		Model->removeOutliers(meanNN, StdDev);	//updates pointcloud to point to a filtered pt cloud
 
 		string filename = savePointCloud();
@@ -636,7 +653,7 @@ void MainWindow::scanButtonPress()
 			statusBar()->showMessage(tr("Converting Point Cloud to Surface Mesh. This can take awhile."), 15000);
 			Model->convertCloudToSurface();
 			string st = filename.substr(0, filename.size() - 3);
-			string filenameOBJ = st + "OBJ"; 
+			string filenameOBJ = st + "OBJ";
 			Model->saveMesh(filenameOBJ);
 		}
 	}
@@ -688,8 +705,6 @@ void MainWindow::scan()
 		cv::remap(distlaserOnImg, laserOnImg, map1, map2, cv::INTER_CUBIC);
 		cv::remap(distlaserOffImg, laserOffImg, map1, map2, cv::INTER_CUBIC);
 		framePointsToCloud(laserOffImg, laserOnImg, 3);// , model);
-		cv::imshow("Laser On", laserOnImg);
-		cv::imshow("Laser Off", laserOffImg);
 	}
 }
 
@@ -897,26 +912,65 @@ void MainWindow::connectMCU() {
 
 void MainWindow::viewCloudClicked()
 {
-
-	trackerControl->viewCloud->setChecked(false);
-	if (isScanning) 
+	if (isScanning) {
+		trackerControl->viewCloud->setChecked(false);
 		return;
+	}
+
+	trackerControl->viewCloud->setChecked(true);
+	
 	QString filename = QFileDialog::getOpenFileName(this, tr("Open File"),
 		"./Results", tr("3D Scan Files (*.pcd *.ply *.OBJ)"));
 
 	if (filename.isEmpty())
 		return;
-	
+
 	if (filename.endsWith(".pcd", Qt::CaseInsensitive))
-		EndoModel::viewPointCloud(filename.toStdString(), 1);
+		EndoModel::viewPointCloud(filename.toStdString(), 1, camera);
 
 	else if (filename.endsWith(".ply", Qt::CaseInsensitive))
-		EndoModel::viewPointCloud(filename.toStdString(), 2);
+		EndoModel::viewPointCloud(filename.toStdString(), 2, camera);
 
-	else 
-		EndoModel::viewPointCloud(filename.toStdString(), 3);
+	else
+		EndoModel::viewPointCloud(filename.toStdString(), 3, camera);
 }
 
+/*
+
+void MainWindow::viewCloudClicked()
+{
+	QVTKWidget widget;
+	widget.resize(512, 256);
+
+	trackerControl->viewCloud->setChecked(false);
+	if (isScanning)
+		return;
+
+	QString filename = QFileDialog::getOpenFileName(this, tr("Open File"),
+		"./Results", tr("3D Scan Files (*.pcd *.ply *.OBJ)"));
+
+	if (filename.isEmpty())
+		return;
+
+	if (filename.endsWith(".pcd", Qt::CaseInsensitive) || filename.endsWith(".ply", Qt::CaseInsensitive))
+	{
+		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+
+		if (filename.endsWith(".pcd", Qt::CaseInsensitive))
+			pcl::io::loadPCDFile<pcl::PointXYZ>(filename, *cloud);
+		else
+			pcl::io::loadPLYFile<pcl::PointXYZ>(filename, cloud);
+
+		pcl::visualization::PCLVisualizer pviz("test_viz");
+
+		pviz.addPointCloud<pcl::PointXYZ>(cloud);
+		pviz.setBackgroundColor(0, 0, 0.1);
+
+		vtkSmartPointer<vtkRenderWindow> renderWindow = pviz.getRenderWindow();
+		widget.SetRenderWindow(renderWindow);
+	}
+}
+*/
 void MainWindow::camWebcam(bool checked)
 {
 	if (!trackerInit) {
@@ -973,11 +1027,11 @@ void MainWindow::saveDataClicked(bool checked)
 
 void MainWindow::surfMeshClicked(bool checked)
 {
-	saveAsMesh = !saveAsMesh; 
+	saveAsMesh = !saveAsMesh;
 	if (saveAsMesh)
 		surfMesh->setChecked(true);
 	else
-		surfMesh->setChecked(false); 
+		surfMesh->setChecked(false);
 }
 
 
@@ -1033,12 +1087,9 @@ cv::Mat MainWindow::subtractLaser(cv::Mat &laserOff, cv::Mat &laserOn)
 	cv::cvtColor(subImg, subImgBW, CV_RGB2GRAY);
 	//cv::cvtColor(laserOn, bwLaserOn, CV_RGB2GRAY);
 	//cv::subtract(bwLaserOn, bwLaserOff, subImgBW);
-	cv::imshow("subimbw", subImg);
 
 	cv::threshold(subImgBW, threshImg, 10, 255, CV_THRESH_TOZERO);
-	cv::imshow("thres", threshImg);
 	cv::blur(threshImg, threshImg, cv::Size(5, 5));
-	cv::imshow("BLUR", threshImg);
 
 	for (int rowN = 0; rowN < laserOff.rows; rowN++)
 	{
@@ -1062,7 +1113,6 @@ cv::Mat MainWindow::subtractLaser(cv::Mat &laserOff, cv::Mat &laserOn)
 			}
 		}
 	}
-	cv::imshow("lineImg", lineImg);
 	return lineImg;
 }
 

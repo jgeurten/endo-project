@@ -34,12 +34,9 @@ cv::Mat Vision::subtractLaser(cv::Mat &laserOff, cv::Mat &laserOn)
 	cv::cvtColor(laserOff, bwLaserOff, CV_RGB2GRAY);
 	cv::cvtColor(laserOn, bwLaserOn, CV_RGB2GRAY);
 	cv::subtract(bwLaserOn, bwLaserOff, subImgBW);
-	cv::imshow("subimbw", subImgBW);
 
 	cv::threshold(subImgBW, threshImg, 10, 255,  CV_THRESH_TOZERO );
-	cv::imshow("thres", threshImg);
 	cv::blur(threshImg, threshImg, cv::Size(5, 5));
-	cv::imshow("BLUR", threshImg);
 
 	for (int rowN = 0; rowN < laserOff.rows; rowN++)
 	{
@@ -63,7 +60,6 @@ cv::Mat Vision::subtractLaser(cv::Mat &laserOff, cv::Mat &laserOn)
 			}
 		}
 	}
-	cv::imshow("lineImg", lineImg); 
 	return result;
 }
 
