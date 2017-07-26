@@ -58,6 +58,7 @@ ADD_EXECUTABLE(EndoScanner ${${PROJECT_NAME}_HDRS} ${${PROJECT_NAME}_SRCS})
 
 target_include_directories(EndoScanner PUBLIC 
   ${${PROJECT_NAME}_INCLUDE_DIRS}
+
   )
 
 TARGET_LINK_LIBRARIES(EndoScanner PUBLIC

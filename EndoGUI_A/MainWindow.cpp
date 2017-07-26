@@ -1,6 +1,5 @@
 //Local includes
 #include "MainWindow.h"
-#include "Serial.h"
 #include "ControlWidget.h"
 #include "qlightwidget.h"
 #include "defines.h"
@@ -40,8 +39,8 @@
 #include <qsize.h>
 #include <QFuture>
 #include <QtConcurrent\qtconcurrentrun.h>
-// #include <QtSerialPort/QSerialPort>
-// #include <QtSerialPort/QSerialPortInfo>
+#include <QtSerialPort/QSerialPort.h>
+
 
 //VTK includes
 #include <vtkProperty.h>
@@ -110,6 +109,7 @@ using namespace std;
 
 class ControlWidget;
 class MCUControlWidget;
+class QSerialPort; 
 
 MainWindow::MainWindow(QWidget *parent)
 	:QMainWindow(parent)
@@ -124,6 +124,7 @@ MainWindow::MainWindow(QWidget *parent)
 	isScanning = false;
 	saveDataBool = true;
 	saveAsMesh = true;
+	paused = false;
 
 	trackReady = false;
 	//cv::VideoCapture capture = new cv::VideoCapture();
@@ -323,37 +324,8 @@ void MainWindow::createControlDock()
 	trackTimer = new QTimer(this);
 
 	connect(trackTimer, SIGNAL(timeout()), this, SLOT(updateTracker()));
-
-	//connect(trackTimer, SIGNAL(timeout()), this, SLOT(updateTracker()));
-
 }
 
-void MainWindow::checkComPort()
-{
-	//QSerialPort serial;
-	//serial.setPortName("COM6");
-	//serial.open(QIODevice::ReadWrite);
-	//serial.setBaudRate(QSerialPort::Baud115200);
-	//serial.setDataBits(QSerialPort::Data8);
-	//serial.setParity(QSerialPort::NoParity);
-	//serial.setStopBits(QSerialPort::OneStop);
-	//serial.setFlowControl(QSerialPort::NoFlowControl);
-	//
-	//if (serial.isOpen() && serial.isWritable())
-	//{
-	//
-	//	QByteArray ba("11");
-	//	serial.write(ba);
-	//	serial.flush();
-	//	qDebug() << "data has been send" << endl;
-	//	serial.close();
-	//}
-	//
-	//else
-	//{
-	//	qDebug() << "An error occured" << endl;
-	//}
-}
 
 void MainWindow::startTracker()
 {
@@ -553,8 +525,6 @@ void MainWindow::camera_button_clicked()
 
 void MainWindow::update_image()
 {
-
-
 	if (capture.isOpened())
 	{
 		capture.set(CV_CAP_PROP_CONTRAST, (double)contrast);
@@ -708,8 +678,46 @@ void MainWindow::scan()
 	}
 }
 
+void MainWindow::arduinoScanPress()
+{
+	if (!isScanning)
+		return;
+	else if (paused)
+		paused = false;
+	else
+		scanButtonPress();			//not scanning and not paused --> first go button press
+
+}
+
+void MainWindow::arduinoPausePress()
+{
+	if (!isScanning)
+		return;
+
+	if (!paused)
+		paused = true;
+	else					//already paused -> stop scanning (double press of pause)
+		scanButtonPress();
+}
+
+
 void MainWindow::updateTracker()
 {
+	if (mcuConnected) 
+	{
+		if (serialPort.bytesAvailable() > 0)		//check for data synch
+		{
+			char* data; 
+			qint64 maxSize = 3;
+			serialPort.read(data, maxSize);
+
+			if (*data == 'M11')
+				arduinoScanPress();
+			if (*data == 'M22')
+				arduinoPausePress();
+		}
+	}
+
 	if (playing)
 		update_image();
 
@@ -859,16 +867,25 @@ void MainWindow::paintEvent(QPaintEvent*)
 void MainWindow::toggleLaser()
 {
 	mcuControl->laserButton->setChecked(false);
+
 	if (mcuConnected && !laserOn) {
-		comPort->write("G21");
-		laserOn = true;
-		mcuControl->laserButton->setText(tr("Laser Off"));
-		mcuControl->laserButton->setChecked(true);
+		QByteArray writeDataon("G21");
+
+		qint64 bytesWritten = serialPort.write(writeDataon);
+		if (bytesWritten >= 3) {
+			laserOn = true;
+			mcuControl->laserButton->setText(tr("Laser Off"));
+			mcuControl->laserButton->setChecked(true);
+		}
 	}
 	else if (mcuConnected && laserOn) {
-		comPort->write("G32");
-		laserOn = false;
-		mcuControl->laserButton->setText(tr("Laser On"));
+		QByteArray writeData("G32");
+		
+		qint64 bytesWritten = serialPort.write(writeData);
+		if (bytesWritten >= 3) {
+			laserOn = false;
+			mcuControl->laserButton->setText(tr("Laser On"));
+		}
 	}
 	else {
 		statusBar()->showMessage(tr("Connect MCU First"), 2000);
@@ -885,25 +902,34 @@ QImage MainWindow::mat_to_qimage(cv::Mat laserOffImg, QImage::Format format)
 void MainWindow::connectMCU() {
 
 	mcuControl->mcuButton->setChecked(false);
-	if (!mcuConnected) {
+	if (!mcuConnected) 
+	{
 		bool okay;
 
 		int portnumber = QInputDialog::getInt(this, tr("Connect MCU"), tr("Enter COM Port #:"), 0, 0, 100, 1, &okay);
 		portname = "COM" + to_string(portnumber);
-		if (okay && portnumber > 0)
-			comPort = new Serial(portname);	//call Serial constructor in SerialPort.cpp
 
-		if (comPort->isConnected()) {
-			mcuControl->mcuButton->setText(tr("Disconnect MCU"));
-			mcuControl->mcuButton->setChecked(true);
-			statusBar()->showMessage(tr("MCU Connected"), 2000);
-			mcuConnected = true;
+		if (okay && portnumber > 0) {
+			serialPort.setPortName(QString::fromStdString(portname));
+			serialPort.setBaudRate(QSerialPort::Baud9600);
+			serialPort.setParity(QSerialPort::NoParity);			//no parity
+
+			if (!serialPort.open(QIODevice::ReadWrite))
+			{
+				statusBar()->showMessage(tr("Unable to connect to COM Port") + QString::number(portnumber), 3000);
+				mcuConnected = false;
+				return;
+			}
+			else
+			{
+				mcuControl->mcuButton->setText(tr("Disconnect MCU"));
+				mcuControl->mcuButton->setChecked(true);
+				statusBar()->showMessage(tr("MCU Connected"), 2000);
+				mcuConnected = true;
+			}
 		}
-		else
-			statusBar()->showMessage(tr("Unable to connect MCU at COM ") + QString::number(portnumber), 5000);
 	}
 	else {
-		delete comPort;
 		mcuConnected = false;
 		statusBar()->showMessage(tr("MCU Disconnected."), 2000);
 		mcuControl->mcuButton->setText(tr("Connect MCU"));
@@ -918,7 +944,7 @@ void MainWindow::viewCloudClicked()
 	}
 
 	trackerControl->viewCloud->setChecked(true);
-	
+
 	QString filename = QFileDialog::getOpenFileName(this, tr("Open File"),
 		"./Results", tr("3D Scan Files (*.pcd *.ply *.OBJ)"));
 

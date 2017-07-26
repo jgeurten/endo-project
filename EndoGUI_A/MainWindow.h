@@ -28,6 +28,7 @@
 #include <qstring.h>
 #include <qmediaplayer.h>
 #include <qthread.h>
+#include <QtSerialPort/QSerialPort.h>
 
 // VTK Includes
 #include <vtkSmartPointer.h>
@@ -132,6 +133,7 @@ private:
 	QLabel			*videoLabel;
 	QSize			*size;
 	QThread			*streamThread;
+	QSerialPort		serialPort; 
 
 	EndoModel		*Model;
 
@@ -210,16 +212,13 @@ private:
 
 	int					framePd;	// period of frame rate
 	bool				trackReady, isReadyToSave, isSaving, playing, mcuConnected, laserOn, trackerInit, isScanning, 
-							saveDataBool, saveAsMesh;
+							saveDataBool, saveAsMesh, paused;
 	int dimensions[3];
 
 	vector<cv::Vec4i>	lines;
 	cv::Point			point1, point2;
+	string				portname, comMsg, configFile, intrinsicsFile, resultsDir, calibDir;
 
-	string				portname;
-	string				configFile, intrinsicsFile, resultsDir, calibDir;
-
-	Serial				*comPort;
 	cv::Mat				distStreamImg, streamImg, laserOnImg, laserOffImg, distlaserOnImg, distlaserOffImg;
 	cv::Mat				frame, intrinsics, distortion, savingMat, newCamMat, map1, map2;
 	string				fileName;
@@ -264,9 +263,6 @@ private:
 	vector<cv::Vec4i> detectLaserLine(cv::Mat &laserOff, cv::Mat &laserOn);
 	void contrastChanged(int sliderPos);
 	void brightnessChanged(int sliderPos);
-	void checkComPort();
-	//cv::Mat changeBCImage(int alpha, int beta);
-	//cv::Mat getImg();
 
 	linalg::EndoPt validatePixel(linalg::EndoPt point);
 
@@ -276,7 +272,8 @@ public:
 	void getNormalPosition();
 	void getOriginPosition();
 	linalg::EndoPt getPixelPosition(int row, int col);
-
+	void arduinoScanPress(); 
+	void arduinoPausePress();
 
 
 
