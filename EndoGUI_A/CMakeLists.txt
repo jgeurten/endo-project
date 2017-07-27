@@ -22,14 +22,13 @@ SET(${PROJECT_NAME}_INCLUDE_DIRS
 
  # message("${PCL_IO_LIBRARIES}")
 
-FIND_PACKAGE(Qt5 REQUIRED COMPONENTS Widgets OpenGL Core Gui Multimedia MultimediaWidgets )
+FIND_PACKAGE(Qt5 REQUIRED COMPONENTS Widgets OpenGL Core Gui Multimedia MultimediaWidgets SerialPort)
 SET(CMAKE_AUTOMOC ON)
 SET(CMAKE_AUTOUIC ON)
 SET(CMAKE_AUTORCC ON)
 
 SET(${PROJECT_NAME}_HDRS
   MainWindow.h
-  #Serial.h
   qlightwidget.h
   Controlwidget.h
   EndoModel.h
@@ -44,7 +43,6 @@ SET(${PROJECT_NAME}_HDRS
 SET(${PROJECT_NAME}_SRCS
   main.cpp
   MainWindow.cpp
-  Serial.cpp
   qlightwidget.cpp
   Controlwidget.cpp
   EndoModel.cpp
@@ -68,6 +66,7 @@ TARGET_LINK_LIBRARIES(EndoScanner PUBLIC
   Qt5::Gui
   Qt5::MultimediaWidgets
   Qt5::Multimedia
+  Qt5::SerialPort
 
   ${OpenCV_LIBS}
 

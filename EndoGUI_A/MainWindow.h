@@ -133,7 +133,7 @@ private:
 	QLabel			*videoLabel;
 	QSize			*size;
 	QThread			*streamThread;
-	QSerialPort		serialPort; 
+	QSerialPort		*serialPort; 
 
 	EndoModel		*Model;
 

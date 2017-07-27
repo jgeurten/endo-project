@@ -680,9 +680,9 @@ void MainWindow::scan()
 
 void MainWindow::arduinoScanPress()
 {
-	if (!isScanning)
+	if (isScanning)					//if scanning, ignore
 		return;
-	else if (paused)
+	else if (paused)				//if paused, resume scan
 		paused = false;
 	else
 		scanButtonPress();			//not scanning and not paused --> first go button press
@@ -705,16 +705,21 @@ void MainWindow::updateTracker()
 {
 	if (mcuConnected) 
 	{
-		if (serialPort.bytesAvailable() > 0)		//check for data synch
+		if (serialPort->bytesAvailable() > 0)		//check for data synch
 		{
-			char* data; 
+			char data[3]; 
 			qint64 maxSize = 3;
-			serialPort.read(data, maxSize);
+			serialPort->read(data, maxSize);
 
-			if (*data == 'M11')
-				arduinoScanPress();
-			if (*data == 'M22')
-				arduinoPausePress();
+			if (data[0] == 'M')
+			{
+				if (data[1] == '1' && data[2] == '1')
+					arduinoScanPress();
+
+				if (data[1] == '2' && data[2] == '2')
+					arduinoPausePress();
+			}
+			serialPort->clear();						//clear buffer
 		}
 	}
 
@@ -871,7 +876,7 @@ void MainWindow::toggleLaser()
 	if (mcuConnected && !laserOn) {
 		QByteArray writeDataon("G21");
 
-		qint64 bytesWritten = serialPort.write(writeDataon);
+		qint64 bytesWritten = serialPort->write(writeDataon);
 		if (bytesWritten >= 3) {
 			laserOn = true;
 			mcuControl->laserButton->setText(tr("Laser Off"));
@@ -881,7 +886,7 @@ void MainWindow::toggleLaser()
 	else if (mcuConnected && laserOn) {
 		QByteArray writeData("G32");
 		
-		qint64 bytesWritten = serialPort.write(writeData);
+		qint64 bytesWritten = serialPort->write(writeData);
 		if (bytesWritten >= 3) {
 			laserOn = false;
 			mcuControl->laserButton->setText(tr("Laser On"));
@@ -910,11 +915,13 @@ void MainWindow::connectMCU() {
 		portname = "COM" + to_string(portnumber);
 
 		if (okay && portnumber > 0) {
-			serialPort.setPortName(QString::fromStdString(portname));
-			serialPort.setBaudRate(QSerialPort::Baud9600);
-			serialPort.setParity(QSerialPort::NoParity);			//no parity
+			serialPort = new QSerialPort(); 
+			serialPort->setPortName(QString::fromStdString(portname));
+			serialPort->setBaudRate(QSerialPort::Baud9600);
+			serialPort->setParity(QSerialPort::NoParity);			//no parity
+			serialPort->setReadBufferSize(4);						//qserialport will buffer 4 bytes( 0x 33 22 11 00) 
 
-			if (!serialPort.open(QIODevice::ReadWrite))
+			if (!serialPort->open(QIODevice::ReadWrite))
 			{
 				statusBar()->showMessage(tr("Unable to connect to COM Port") + QString::number(portnumber), 3000);
 				mcuConnected = false;
