@@ -135,6 +135,16 @@ private:
 	QThread			*streamThread;
 	QSerialPort		*serialPort; 
 
+	QByteArray      laserOnMsg; 
+	QByteArray		laserOffMsg; 
+	QByteArray		laserOnRes; 
+	QByteArray		laserOffRes;
+	QByteArray		goButtonMsg;
+	QByteArray		pauseButtonMsg;
+	QByteArray		goButtonRes;
+	QByteArray		pauseButtonRes;
+
+
 	EndoModel		*Model;
 
 

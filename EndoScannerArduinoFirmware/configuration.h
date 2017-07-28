@@ -5,7 +5,7 @@
 #define CONFIGURATION_H
 
 
-#define BAUD_RATE           115200
+#define BAUD_RATE           9600
 
 #define ISR_PIN             2
 #define LASER_ENABLE_PIN    3

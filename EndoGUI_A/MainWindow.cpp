@@ -707,14 +707,16 @@ void MainWindow::updateTracker()
 	{
 		if (serialPort->bytesAvailable() > 0)		//check for data synch
 		{
-			char data[3]; 
-			qint64 maxSize = 3;
+			char data[8]; 
+			qint64 maxSize = 8;
 			serialPort->read(data, maxSize);
 
 			if (data[0] == 'M')
 			{
 				if (data[1] == '1' && data[2] == '1')
+				{
 					arduinoScanPress();
+				}
 
 				if (data[1] == '2' && data[2] == '2')
 					arduinoPausePress();
@@ -874,20 +876,21 @@ void MainWindow::toggleLaser()
 	mcuControl->laserButton->setChecked(false);
 
 	if (mcuConnected && !laserOn) {
-		QByteArray writeDataon("G21");
+		const char hg[1] = { '1'};
+		QByteArray writeDataon(hg);
 
 		qint64 bytesWritten = serialPort->write(writeDataon);
-		if (bytesWritten >= 3) {
+		if (bytesWritten > 0) {
 			laserOn = true;
 			mcuControl->laserButton->setText(tr("Laser Off"));
 			mcuControl->laserButton->setChecked(true);
 		}
 	}
 	else if (mcuConnected && laserOn) {
-		QByteArray writeData("G32");
+		QByteArray writeData("2");
 		
 		qint64 bytesWritten = serialPort->write(writeData);
-		if (bytesWritten >= 3) {
+		if (bytesWritten > 0) {
 			laserOn = false;
 			mcuControl->laserButton->setText(tr("Laser On"));
 		}
@@ -909,6 +912,67 @@ void MainWindow::connectMCU() {
 	mcuControl->mcuButton->setChecked(false);
 	if (!mcuConnected) 
 	{
+		//Initialize all serial commands: msg = send to arduino. res = received from arduino
+
+		//turn laser on command:
+		//  laserOnMsg.resize(4);
+		//  laserOnMsg[0] = 0xFF;		//Msg byte					//46, 46
+		//  laserOnMsg[1] = 0xFF;		//On	
+		//  laserOnMsg[2] = 0xAA;		//Laser specific tag byte		41,41
+		//  laserOnMsg[3] = 0x00;		//Sent							0,0
+
+		QString temp("FFFFAA00");
+		laserOnMsg = temp.toLatin1(); 
+		
+		//turn laser off command
+		laserOffMsg.resize(4);
+		laserOffMsg[0] = 0xFF;
+		laserOffMsg[1] = 0x00;		//Off
+		laserOffMsg[2] = 0xAA;
+		laserOffMsg[3] = 0x00; 
+
+		//Receive from Arduino signalling received laser on msg
+		laserOnRes.resize(4);
+		laserOnRes[0] = 0x00;		//Response
+		laserOnRes[1] = 0xFF;		//On		
+		laserOnRes[2] = 0xAA;		//Laser
+		laserOnRes[3] = 0x01;		//received
+
+		//Receive from Arduino -> received laser off msg
+		laserOffRes.resize(4);
+		laserOffRes[0] = 0x00;		//Response
+		laserOffRes[1] = 0x00;		//On		
+		laserOffRes[2] = 0xAA;		//Laser
+		laserOffRes[3] = 0x01;
+
+		//send to mcu when go button res has been received
+		goButtonMsg.resize(4);
+		goButtonMsg[0] = 0xFF;		//Message
+		goButtonMsg[1] = 0xFF;		//Go		
+		goButtonMsg[2] = 0xBB;		//Button
+		goButtonMsg[3] = 0x01;		//
+
+		//Sent from arduino when go button is pressed
+		goButtonRes.resize(4);
+		goButtonRes[0] = 0x00;		//Response
+		goButtonRes[1] = 0xFF;		//Go		
+		goButtonRes[2] = 0xBB;		//Button
+		goButtonRes[3] = 0x01;
+		
+		//Send to mcu after getting pause res
+		pauseButtonMsg.resize(4);
+		pauseButtonMsg[0] = 0xFF;		//Message
+		pauseButtonMsg[1] = 0x00;		//Pasue		
+		pauseButtonMsg[2] = 0xBB;		//Button
+		pauseButtonMsg[3] = 0x01;		//
+
+		//Sent from arduino to signal pause
+		pauseButtonRes.resize(4);
+		goButtonRes[0] = 0x00;		//Response
+		goButtonRes[1] = 0x00;		//pause		
+		goButtonRes[2] = 0xBB;		//Button
+		goButtonRes[3] = 0x01;
+
 		bool okay;
 
 		int portnumber = QInputDialog::getInt(this, tr("Connect MCU"), tr("Enter COM Port #:"), 0, 0, 100, 1, &okay);
@@ -919,7 +983,8 @@ void MainWindow::connectMCU() {
 			serialPort->setPortName(QString::fromStdString(portname));
 			serialPort->setBaudRate(QSerialPort::Baud9600);
 			serialPort->setParity(QSerialPort::NoParity);			//no parity
-			serialPort->setReadBufferSize(4);						//qserialport will buffer 4 bytes( 0x 33 22 11 00) 
+			serialPort->setReadBufferSize(8);						//qserialport will buffer 4 bytes( 0x 33 22 11 00) 
+			serialPort->setFlowControl(QSerialPort::NoFlowControl);
 
 			if (!serialPort->open(QIODevice::ReadWrite))
 			{
@@ -933,6 +998,7 @@ void MainWindow::connectMCU() {
 				mcuControl->mcuButton->setChecked(true);
 				statusBar()->showMessage(tr("MCU Connected"), 2000);
 				mcuConnected = true;
+				serialPort->flush();
 			}
 		}
 	}
