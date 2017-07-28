@@ -144,7 +144,7 @@ private:
 	QByteArray		goButtonRes;
 	QByteArray		pauseButtonRes;
 
-
+	char			gobuttonres[7] = { 'F', 'F', 'A', 'A', 'B', '3' , '\0'};
 	EndoModel		*Model;
 
 

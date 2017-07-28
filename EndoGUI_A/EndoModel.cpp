@@ -14,8 +14,7 @@
 #include <pcl/features/normal_3d.h>
 #include <pcl/console/parse.h>
 #include <pcl/common/centroid.h>
-
-//boost
+ //boost
 #include <boost/thread/thread.hpp>
 
 
@@ -206,7 +205,7 @@ void EndoModel::convertCloudToSurface()
 
 	//SEt traingulation params:
 	pcl::GreedyProjectionTriangulation<pcl::PointNormal> gp3;
-	gp3.setSearchRadius(0.5);					//max search radius between connected pts
+	gp3.setSearchRadius(2.5);					//max search radius between connected pts
 	gp3.setMu(2.5);								//sets multiplier for calc of final search radius
 	gp3.setMaximumSurfaceAngle(M_PI / 4);		// 45 degrees
 	gp3.setMaximumNearestNeighbors(100);

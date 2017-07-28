@@ -611,7 +611,7 @@ void MainWindow::scanButtonPress()
 		ResultsFile.close();
 
 		//Remove outliers and down sample point cloud before saving
-		int meanNN = 50;
+		int meanNN = 150;
 		float StdDev = 1.0;
 		statusBar()->showMessage(tr("Filtering Point Cloud. Please wait."), 8000);
 		//Want to see raw PC
@@ -625,6 +625,8 @@ void MainWindow::scanButtonPress()
 			string st = filename.substr(0, filename.size() - 3);
 			string filenameOBJ = st + "OBJ";
 			Model->saveMesh(filenameOBJ);
+			statusBar()->showMessage(tr("Finished Saving Point Cloud and Mesh. Ready."), 3000);
+
 		}
 	}
 }
@@ -707,20 +709,17 @@ void MainWindow::updateTracker()
 	{
 		if (serialPort->bytesAvailable() > 0)		//check for data synch
 		{
-			char data[8]; 
-			qint64 maxSize = 8;
+			char data[7]; 
+			qint64 maxSize = 6;
+			Sleep(10);								//allow for all data to terminate writing before reading
 			serialPort->read(data, maxSize);
-
-			if (data[0] == 'M')
-			{
-				if (data[1] == '1' && data[2] == '1')
-				{
-					arduinoScanPress();
-				}
-
-				if (data[1] == '2' && data[2] == '2')
-					arduinoPausePress();
-			}
+			data[6] = '\0'; 
+			if(strcmp(data, gobuttonres) == 0  )
+				arduinoScanPress();
+			
+			if(data == pauseButtonRes)
+				arduinoPausePress();
+			
 			serialPort->clear();						//clear buffer
 		}
 	}
@@ -939,11 +938,11 @@ void MainWindow::connectMCU() {
 		laserOnRes[3] = 0x01;		//received
 
 		//Receive from Arduino -> received laser off msg
-		laserOffRes.resize(4);
-		laserOffRes[0] = 0x00;		//Response
-		laserOffRes[1] = 0x00;		//On		
-		laserOffRes[2] = 0xAA;		//Laser
-		laserOffRes[3] = 0x01;
+		laserOffRes.resize(3);
+		laserOffRes[0] = 0xFF;		//Response
+		laserOffRes[1] = 0xAA;		//On		
+		laserOffRes[2] = 0xA3;		//Laser
+		
 
 		//send to mcu when go button res has been received
 		goButtonMsg.resize(4);
@@ -953,11 +952,14 @@ void MainWindow::connectMCU() {
 		goButtonMsg[3] = 0x01;		//
 
 		//Sent from arduino when go button is pressed
-		goButtonRes.resize(4);
-		goButtonRes[0] = 0x00;		//Response
-		goButtonRes[1] = 0xFF;		//Go		
-		goButtonRes[2] = 0xBB;		//Button
-		goButtonRes[3] = 0x01;
+		//goButtonRes.resize(3);
+		//goButtonRes[0] = 0xFF;		//Response
+		//goButtonRes[1] = 0xAA;		//Go		
+		//goButtonRes[2] = 0xB3;		//Button
+		//
+		//QString temp2("FFAAB3");
+		//goButtonRes = temp2.toLatin1();
+
 		
 		//Send to mcu after getting pause res
 		pauseButtonMsg.resize(4);
@@ -983,7 +985,7 @@ void MainWindow::connectMCU() {
 			serialPort->setPortName(QString::fromStdString(portname));
 			serialPort->setBaudRate(QSerialPort::Baud9600);
 			serialPort->setParity(QSerialPort::NoParity);			//no parity
-			serialPort->setReadBufferSize(8);						//qserialport will buffer 4 bytes( 0x 33 22 11 00) 
+			serialPort->setReadBufferSize(6);						//qserialport will buffer 4 bytes( 0x 33 22 11 00) 
 			serialPort->setFlowControl(QSerialPort::NoFlowControl);
 
 			if (!serialPort->open(QIODevice::ReadWrite))
@@ -1242,6 +1244,8 @@ void MainWindow::framePointsToCloud(cv::Mat &laserOn, cv::Mat &laserOff, int res
 		LOG_ERROR("Unable to transform one or many translations");
 		return;
 	}
+
+	if (paused) return; 
 
 	//get camera centre 
 	getProjectionPosition();	//updates camera coords
