@@ -14,6 +14,34 @@
 #include <pcl/features/normal_3d.h>
 #include <pcl/console/parse.h>
 #include <pcl/common/centroid.h>
+#include <pcl/surface/mls.h>
+#include <pcl/point_types.h>
+
+//VTK Includes:
+#include <vtkCellArray.h>
+#include <vtkProperty.h>
+#include <vtkDataSetMapper.h>
+#include <vtkActor.h>
+#include <vtkPoints.h>
+#include <vtkPolyData.h>
+#include <vtkPolygon.h>
+#include <vtkSmartPointer.h>
+#include <vtkMath.h>
+#include <vtkRenderer.h>
+#include <vtkRenderWindow.h>
+#include <vtkRenderWindowInteractor.h>
+#include <vtkCleanPolyData.h>
+#include <vtkDelaunay3D.h>
+#include <vtkXMLPolyDataReader.h>
+#include <vtkPolyDataReader.h>
+#include <vtkPlyReader.h>
+#include <vtkObjReader.h>
+#include <vtkSurfaceReconstructionFilter.h>
+#include <vtkContourFilter.h>
+#include <vtkPLYWriter.h>
+#include <vtkReverseSense.h>
+
+
  //boost
 #include <boost/thread/thread.hpp>
 
@@ -50,13 +78,8 @@ EndoModel::EndoModel()
 
 void EndoModel::addPointToPointCloud(linalg::EndoPt point)
 {
-	//convert EndoPt to pcl point:
-	pcl::PointXYZ pc;
-	pc.x = point.x;
-	pc.y = point.y;
-	pc.z = point.z;
-
-	pointCloud->push_back(pc);
+	//convert EndoPt to vtk point:
+	points->InsertNextPoint(point.x, point.y, point.z); 
 }
 
 void EndoModel::savePointCloudAsPLY(string &filename)
@@ -153,12 +176,32 @@ void EndoModel::removeOutliers(int meanK, float SD)
 	//centroid which will be the only point kept.
 	pcl::VoxelGrid<pcl::PointXYZ> sampler;
 	sampler.setInputCloud(filtCloud);
-	sampler.setLeafSize(0.01f, 0.01f, 0.01f);	//parameters are in meters
+	sampler.setLeafSize(3.0f, 3.0f, 3.0f);	//parameters are in 
 	sampler.filter(*downSampCld);
 
-	//outliers are removed Cloud has been approximated. 
+	//outliers are removed Cloud has been approximated.
+	pcl::PointCloud<pcl::PointNormal> out;
+	//smoothCloud(downSampCld, out);
 	pointCloud = downSampCld;
 }
+
+void EndoModel::smoothCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr input, pcl::PointCloud<pcl::PointNormal> output)
+{
+	//function algo attempts to recreate missing parts of the surface using high order polynomials (interpolations) between surrounding data.
+	pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
+
+	pcl::MovingLeastSquares<pcl::PointXYZ, pcl::PointNormal> mls;
+	mls.setComputeNormals(true);
+	mls.setInputCloud(input);
+	mls.setPolynomialFit(true);
+	mls.setSearchMethod(tree);
+	mls.setSearchRadius(true);
+
+	mls.process(output); 
+	pcl::io::savePCDFile("cylinder.pcd", output);
+}
+
+
 
 size_t EndoModel::getCloudSize()
 {
@@ -187,11 +230,6 @@ void EndoModel::convertCloudToSurface()
 	norm.setInputCloud(cloud);
 	norm.setSearchMethod(tree);
 
-	Eigen::Vector4f centroid;
-	//pcl::compute3DCentroid(//(pointCloud, centroid);
-	pcl::compute3DCentroid(*cloud, centroid);
-	//norm.setViewPoint(centroid[0], centroid[1], centroid[2]);
-
 	norm.setKSearch(ksearch);
 	norm.compute(*normals);
 
@@ -205,8 +243,8 @@ void EndoModel::convertCloudToSurface()
 
 	//SEt traingulation params:
 	pcl::GreedyProjectionTriangulation<pcl::PointNormal> gp3;
-	gp3.setSearchRadius(2.5);					//max search radius between connected pts
-	gp3.setMu(2.5);								//sets multiplier for calc of final search radius
+	gp3.setSearchRadius(150);					//max search radius between connected pts
+	gp3.setMu(2.0);								//sets multiplier for calc of final search radius
 	gp3.setMaximumSurfaceAngle(M_PI / 4);		// 45 degrees
 	gp3.setMaximumNearestNeighbors(100);
 	gp3.setMinimumAngle(M_PI / 18);				// 10 degrees
@@ -221,3 +259,156 @@ void EndoModel::convertCloudToSurface()
 	
 	*surfaceMesh = _surfaceMesh;			//populate global variable  
 }
+
+void EndoModel::createVTKSurface(string &filename)
+{
+	//Open file to get point cloud. convert point cloud to vtk surface using 
+	//delaunay algo: http://www.vtk.org/Wiki/VTK/Examples/Cxx/Modelling/Delaunay3D
+
+	//Create vtk mapper. Mapper class interfaces data geometry and graphics
+	vtkSmartPointer<vtkDataSetMapper> originalMapper = vtkSmartPointer<vtkDataSetMapper>::New();
+
+	// Filter the polydata. removes duplicated points
+	vtkSmartPointer<vtkCleanPolyData> filterer = vtkSmartPointer<vtkCleanPolyData>::New();
+
+	//Open file:
+	string type = vtksys::SystemTools::GetFilenameExtension(filename);
+
+	if (type == ".ply")
+	{
+		vtkSmartPointer<vtkPLYReader> plyreader = vtkSmartPointer<vtkPLYReader>::New();
+		plyreader->SetFileName(filename.c_str());
+		plyreader->Update();				//get data
+		originalMapper->SetInputConnection(plyreader->GetOutputPort());
+		filterer->SetInputConnection(plyreader->GetOutputPort());
+	}
+	else if (type == ".OBJ")
+	{
+		vtkSmartPointer<vtkOBJReader> objreader = vtkSmartPointer<vtkOBJReader>::New();
+		objreader->SetFileName(filename.c_str());
+		objreader->Update();
+		originalMapper->SetInputConnection(objreader->GetOutputPort());
+		filterer->SetInputConnection(objreader->GetOutputPort());
+	}
+
+	//Create actor. Actor represents an object while rendering. Maintains reference to geometry:
+	vtkSmartPointer<vtkActor> originalActor = 	vtkSmartPointer<vtkActor>::New();
+	originalActor->SetMapper(originalMapper);
+	originalActor->GetProperty()->SetColor(1, 0, 0);
+
+	// Generate a tetrahedral mesh from the input points.
+	vtkSmartPointer<vtkDelaunay3D> delaunay3D =	vtkSmartPointer<vtkDelaunay3D>::New();
+	delaunay3D->SetInputConnection(filterer->GetOutputPort());
+
+	//Create a mapper and actor for delauney output
+	vtkSmartPointer<vtkDataSetMapper> delaunayMapper =	vtkSmartPointer<vtkDataSetMapper>::New();
+	vtkSmartPointer<vtkActor> delaunayActor =	vtkSmartPointer<vtkActor>::New();
+	delaunayMapper->SetInputConnection(filterer->GetOutputPort()); 
+	delaunayActor->SetMapper(delaunayMapper); 
+	delaunayActor->GetProperty()->SetColor(1, 0, 0);
+
+	// Generate a mesh from the input points. If Alpha is non-zero, then
+	// tetrahedra, triangles, edges and vertices that lie within the
+	// alpha radius are output.
+	vtkSmartPointer<vtkDelaunay3D> delaunay3DAlpha =
+		vtkSmartPointer<vtkDelaunay3D>::New();
+	delaunay3DAlpha->SetInputConnection(filterer->GetOutputPort());
+	delaunay3DAlpha->SetAlpha(0.1);
+
+	vtkSmartPointer<vtkDataSetMapper> delaunayAlphaMapper =
+		vtkSmartPointer<vtkDataSetMapper>::New();
+	delaunayAlphaMapper->SetInputConnection(delaunay3DAlpha->GetOutputPort());
+
+	vtkSmartPointer<vtkActor> delaunayAlphaActor =
+		vtkSmartPointer<vtkActor>::New();
+	delaunayAlphaActor->SetMapper(delaunayAlphaMapper);
+	delaunayAlphaActor->GetProperty()->SetColor(1, 0, 0);
+
+	//Create visualization/interactor, renderer, render window:
+	double leftViewport[4] = { 0.0, 0.0, 0.33, 1.0 };
+	double centerViewport[4] = { 0.33, 0.0, 0.66, 1.0 };
+	double rightViewport[4] = { 0.66, 0.0, 1.0, 1.0 };
+	vtkSmartPointer<vtkRenderer> originalRenderer =	vtkSmartPointer<vtkRenderer>::New();
+	vtkSmartPointer<vtkRenderer> delaunayRenderer =	vtkSmartPointer<vtkRenderer>::New();
+	vtkSmartPointer<vtkRenderer> delaunayAlphaRenderer = vtkSmartPointer<vtkRenderer>::New();
+	vtkSmartPointer<vtkRenderWindow> renderWindow =	vtkSmartPointer<vtkRenderWindow>::New();
+	renderWindow->SetSize(900, 300);
+
+	renderWindow->AddRenderer(originalRenderer);
+	originalRenderer->SetViewport(leftViewport);
+	renderWindow->AddRenderer(delaunayRenderer);
+	delaunayRenderer->SetViewport(centerViewport);
+	renderWindow->AddRenderer(delaunayAlphaRenderer);
+	delaunayAlphaRenderer->SetViewport(rightViewport);
+
+	vtkSmartPointer<vtkRenderWindowInteractor> renderWindowInteractor =	vtkSmartPointer<vtkRenderWindowInteractor>::New();
+	renderWindowInteractor->SetRenderWindow(renderWindow);
+
+	originalRenderer->AddActor(originalActor);
+	delaunayRenderer->AddActor(delaunayActor);
+	delaunayAlphaRenderer->AddActor(delaunayAlphaActor);
+
+	originalRenderer->SetBackground(.3, .6, .3);
+	delaunayRenderer->SetBackground(.4, .6, .3);
+	delaunayAlphaRenderer->SetBackground(.5, .6, .3);
+
+	// Render and interact
+	renderWindow->Render();
+	renderWindowInteractor->Start();
+
+}
+
+void EndoModel::createVTKPC(string filename)
+{
+	
+	//Create polydata structure and set points equal to vtkpoints pointer
+	vtkSmartPointer<vtkPolyData> polydata = vtkSmartPointer<vtkPolyData>::New();
+	
+	vtkPoints* elves = vtkPoints::New();
+	float x, y, z;
+	// generate random points on unit sphere
+	for (int i = 0; i<5000; i++)
+	{
+
+		double u = vtkMath::Random(0.0, 1.0);
+		double v = vtkMath::Random(0.0, 1.0);
+		double phi = 2.0*3.14159265*u;
+		double theta = acos(2.0*v - 1.0);
+
+		x = std::cos(phi)*std::sin(theta);
+		y = std::sin(phi)*std::sin(theta);
+		z = std::cos(theta);
+
+		elves->InsertNextPoint(x, y, z);
+	}
+
+	polydata->SetPoints(elves); 
+
+	// Construct the surface and create isosurface.	
+	vtkSmartPointer<vtkSurfaceReconstructionFilter> surface = vtkSmartPointer<vtkSurfaceReconstructionFilter>::New();
+
+	//If vtk version > 5
+	surface->SetInputData(polydata); 
+	//else: surface->SetInput(polydata); 
+
+	vtkSmartPointer<vtkContourFilter> contourFilter = vtkSmartPointer<vtkContourFilter>::New();
+	contourFilter->SetInputConnection(surface->GetOutputPort());
+	contourFilter->SetValue(0, 0.0);
+
+	// Sometimes the contouring algorithm can create a volume whose gradient
+	// vector and ordering of polygon (using the right hand rule) are
+	// inconsistent. vtkReverseSense cures this problem.
+	vtkSmartPointer<vtkReverseSense> reverse = vtkSmartPointer<vtkReverseSense>::New();
+	reverse->SetInputConnection(contourFilter->GetOutputPort());
+	reverse->ReverseCellsOn();
+	reverse->ReverseNormalsOn();
+	reverse->Update();
+
+	//Save as PLY
+	vtkSmartPointer<vtkPLYWriter> plyWriter =
+		vtkSmartPointer<vtkPLYWriter>::New();
+	plyWriter->SetFileName(filename.c_str());
+	plyWriter->SetInputConnection(reverse->GetOutputPort());
+	plyWriter->Write();
+}
+

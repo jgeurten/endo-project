@@ -18,6 +18,10 @@
 #include <pcl/io/vtk_io.h>
 #include <pcl/common/common_headers.h>
 
+//vtk:
+#include <vtkPolyDataReader.h>
+#include <vtkPoints.h>
+
 #include <iostream>
 #include <fstream>
 
@@ -31,6 +35,7 @@ public:
 
 	pcl::PointCloud<pcl::PointXYZ>::Ptr pointCloud;
 	pcl::PolygonMesh::Ptr surfaceMesh; 
+	vtkPoints* points; 
 
 	EndoModel();
 	void addPointToPointCloud(linalg::EndoPt point);
@@ -41,7 +46,9 @@ public:
 	void removeOutliers(int meanK, float SD);
 	size_t getCloudSize(); 
 	void convertCloudToSurface();
-
+	void smoothCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr input, pcl::PointCloud<pcl::PointNormal> output);
+	static void createVTKSurface(string &filename);
+	static void createVTKPC(string filename); 
 //Static functions:	
 	static void viewPointCloud(string &filename, int fileType, linalg::EndoPt camera);
 };

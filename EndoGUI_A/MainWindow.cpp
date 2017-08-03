@@ -612,7 +612,7 @@ void MainWindow::scanButtonPress()
 
 		//Remove outliers and down sample point cloud before saving
 		int meanNN = 150;
-		float StdDev = 1.0;
+		float StdDev = 0.9;
 		statusBar()->showMessage(tr("Filtering Point Cloud. Please wait."), 8000);
 		//Want to see raw PC
 		Model->removeOutliers(meanNN, StdDev);	//updates pointcloud to point to a filtered pt cloud
@@ -634,7 +634,7 @@ void MainWindow::scanButtonPress()
 string MainWindow::savePointCloud()
 {
 
-	QString filename = QFileDialog::getSaveFileName(this, "Save File", tr("./Results"), "PCD (*.pcd) ;; PLY (*.ply)");
+		QString filename = QFileDialog::getSaveFileName(this, "Save File", tr("./Results"), "PCD (*.pcd) ;; PLY (*.ply)");
 
 	if (filename.isEmpty()) return "";
 	qDebug() << filename;
@@ -645,7 +645,8 @@ string MainWindow::savePointCloud()
 	}
 	else if (filename.endsWith(".ply", Qt::CaseInsensitive)) {
 		qDebug() << "Save as ply file.";
-		Model->savePointCloudAsPLY(filename.toStdString());
+		//Model->savePointCloudAsPLY(filename.toStdString());
+		Model->createVTKPC(filename.toStdString());
 		return filename.toStdString();
 	}
 }
@@ -676,7 +677,7 @@ void MainWindow::scan()
 
 		cv::remap(distlaserOnImg, laserOnImg, map1, map2, cv::INTER_CUBIC);
 		cv::remap(distlaserOffImg, laserOffImg, map1, map2, cv::INTER_CUBIC);
-		framePointsToCloud(laserOffImg, laserOnImg, 3);// , model);
+		framePointsToCloud(laserOffImg, laserOnImg, 2);// , model);
 	}
 }
 
@@ -1026,52 +1027,10 @@ void MainWindow::viewCloudClicked()
 	if (filename.isEmpty())
 		return;
 
-	if (filename.endsWith(".pcd", Qt::CaseInsensitive))
-		EndoModel::viewPointCloud(filename.toStdString(), 1, camera);
-
-	else if (filename.endsWith(".ply", Qt::CaseInsensitive))
-		EndoModel::viewPointCloud(filename.toStdString(), 2, camera);
-
 	else
-		EndoModel::viewPointCloud(filename.toStdString(), 3, camera);
+		EndoModel::createVTKPC(filename.toStdString());
 }
 
-/*
-
-void MainWindow::viewCloudClicked()
-{
-	QVTKWidget widget;
-	widget.resize(512, 256);
-
-	trackerControl->viewCloud->setChecked(false);
-	if (isScanning)
-		return;
-
-	QString filename = QFileDialog::getOpenFileName(this, tr("Open File"),
-		"./Results", tr("3D Scan Files (*.pcd *.ply *.OBJ)"));
-
-	if (filename.isEmpty())
-		return;
-
-	if (filename.endsWith(".pcd", Qt::CaseInsensitive) || filename.endsWith(".ply", Qt::CaseInsensitive))
-	{
-		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
-
-		if (filename.endsWith(".pcd", Qt::CaseInsensitive))
-			pcl::io::loadPCDFile<pcl::PointXYZ>(filename, *cloud);
-		else
-			pcl::io::loadPLYFile<pcl::PointXYZ>(filename, cloud);
-
-		pcl::visualization::PCLVisualizer pviz("test_viz");
-
-		pviz.addPointCloud<pcl::PointXYZ>(cloud);
-		pviz.setBackgroundColor(0, 0, 0.1);
-
-		vtkSmartPointer<vtkRenderWindow> renderWindow = pviz.getRenderWindow();
-		widget.SetRenderWindow(renderWindow);
-	}
-}
-*/
 void MainWindow::camWebcam(bool checked)
 {
 	if (!trackerInit) {
