@@ -98,6 +98,7 @@ private:
 
 	QMenu			*fileMenu;
 	QMenu			*scanMenu;
+	QMenu			*laserMenu;
 	QMenu			*helpMenu;
 	QMenu			*cameraMenu;
 	QAction			*openAct;
@@ -109,6 +110,8 @@ private:
 	QAction			*endoCam;
 	QAction			*saveScanData;
 	QAction			*surfMesh;
+	QAction			*redLaser;
+	QAction			*greenLaser;
 
 	QWidget			*videoWidget;
 	QPushButton		*pushButton;
@@ -159,10 +162,14 @@ private:
 	vtkPlusDevice									*trackerDevice;
 	//Plus transforms
 	vtkSmartPointer<vtkMatrix4x4>					camera2Image = vtkSmartPointer<vtkMatrix4x4>::New();
-	vtkSmartPointer<vtkMatrix4x4>					laser2Tracker = vtkSmartPointer<vtkMatrix4x4>::New();
+	vtkSmartPointer<vtkMatrix4x4>					rLaser2Tracker = vtkSmartPointer<vtkMatrix4x4>::New();
+	vtkSmartPointer<vtkMatrix4x4>					rNormal2Tracker = vtkSmartPointer<vtkMatrix4x4>::New();
+	vtkSmartPointer<vtkMatrix4x4>					rOrigin2Tracker = vtkSmartPointer<vtkMatrix4x4>::New();
+
+	vtkSmartPointer<vtkMatrix4x4>					gLaser2Tracker = vtkSmartPointer<vtkMatrix4x4>::New();
+	vtkSmartPointer<vtkMatrix4x4>					gNormal2Tracker = vtkSmartPointer<vtkMatrix4x4>::New();
+	vtkSmartPointer<vtkMatrix4x4>					gOrigin2Tracker = vtkSmartPointer<vtkMatrix4x4>::New();
 	vtkSmartPointer<vtkMatrix4x4>					camera2Tracker = vtkSmartPointer<vtkMatrix4x4>::New();
-	vtkSmartPointer<vtkMatrix4x4>					normal2Tracker = vtkSmartPointer<vtkMatrix4x4>::New();
-	vtkSmartPointer<vtkMatrix4x4>					origin2Tracker = vtkSmartPointer<vtkMatrix4x4>::New();
 	vtkSmartPointer<vtkMatrix4x4>					imagePlane2Tracker = vtkSmartPointer<vtkMatrix4x4>::New();
 	vtkSmartPointer<vtkMatrix4x4>					cameraInv = vtkSmartPointer<vtkMatrix4x4>::New();
 	vtkSmartPointer<vtkMatrix4x4>					point2ImagePlane = vtkSmartPointer<vtkMatrix4x4>::New();
@@ -179,16 +186,25 @@ private:
 
 	// Plus Transform Names
 	PlusTransformName								camera2TrackerName = PlusTransformName("Camera", "Tracker");
-	PlusTransformName								laser2TrackerName = PlusTransformName("Laser", "Tracker");
 	PlusTransformName								camera2ImageName = PlusTransformName("Camera", "ImagePlane");
-	PlusTransformName								normal2TrackerName = PlusTransformName("PlaneNormal", "Tracker");
-	PlusTransformName								origin2TrackerName = PlusTransformName("PlaneOrigin", "Tracker");
-	PlusTransformName								normal2LaserName = PlusTransformName("PlaneNormal", "Laser");
 	PlusTransformName								imagePlane2TrackerName = PlusTransformName("ImagePlane", "Tracker");
 	PlusTransformName								point2imagePlaneName = PlusTransformName("Point", "ImagePlane");
 	PlusTransformName								tracker2PixelName = PlusTransformName("Tracker", "Pixel");
 	PlusTransformName								tracker2ImagePlaneName = PlusTransformName("Tracker", "ImagePlane");
 
+													//Red Laser:
+	PlusTransformName								rLaser2TrackerName = PlusTransformName("RedLaser", "Tracker");
+	PlusTransformName								rNormal2TrackerName = PlusTransformName("RedPlaneNormal", "Tracker");
+	PlusTransformName								rNormal2LaserName = PlusTransformName("RedPlaneNormal", "RedLaser");
+	PlusTransformName								rOrigin2TrackerName = PlusTransformName("RedPlaneOrigin", "Tracker");
+
+													//Green laser:
+	PlusTransformName								gLaser2TrackerName = PlusTransformName("GreenLaser", "Tracker");
+	PlusTransformName								gOrigin2TrackerName = PlusTransformName("GreenPlaneOrigin", "Tracker");
+	PlusTransformName								gNormal2LaserName = PlusTransformName("PlaneNormal", "GreenLaser");
+	PlusTransformName								gNormal2TrackerName = PlusTransformName("GreenPlaneNormal", "Tracker");
+
+	
 
 	// Mixers
 	vtkPlusDevice									*mixerDevice;
@@ -222,7 +238,7 @@ private:
 
 	int					framePd;	// period of frame rate
 	bool				trackReady, isReadyToSave, isSaving, playing, mcuConnected, laserOn, trackerInit, isScanning, 
-							saveDataBool, saveAsMesh, paused;
+							saveDataBool, saveAsMesh, paused, usingGreenLaser, usingRedLaser;
 	int dimensions[3];
 
 	vector<cv::Vec4i>	lines;
@@ -259,6 +275,8 @@ private:
 	void surfMeshClicked(bool);
 	void camWebcam(bool);
 	void camEndocam(bool);
+	void useRedLaser();
+	void useGreenLaser();
 	void saveDataClicked(bool);
 	void updateTracker();
 	string savePointCloud();
@@ -270,6 +288,7 @@ private:
 	void about();
 	void framePointsToCloud(cv::Mat &laserOff, cv::Mat &laserOn, int res);//, EndoModel* model);
 	cv::Mat subtractLaser(cv::Mat &laserOff, cv::Mat &laserOn);
+	int* subImAlgo(cv::Mat &laserOff, cv::Mat &laserOn, int maxIndicies[]);
 	vector<cv::Vec4i> detectLaserLine(cv::Mat &laserOff, cv::Mat &laserOn);
 	void contrastChanged(int sliderPos);
 	void brightnessChanged(int sliderPos);
@@ -281,6 +300,8 @@ public:
 
 	void getNormalPosition();
 	void getOriginPosition();
+	void getGreenNormalPosition();		//updates normal
+	void getGreenOriginPosition();
 	linalg::EndoPt getPixelPosition(int row, int col);
 	void arduinoScanPress(); 
 	void arduinoPausePress();

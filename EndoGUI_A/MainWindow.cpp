@@ -5,6 +5,9 @@
 #include "defines.h"
 #include <EndoModel.h>
 #include <LinAlg.h>
+#include <matrix.h>
+#include <imageUtil.h>
+#include <matrixUtil.h>
 //#include "SerialPort.h"
 
 //OpenCv includes
@@ -127,6 +130,10 @@ MainWindow::MainWindow(QWidget *parent)
 	paused = false;
 
 	trackReady = false;
+
+	//By default expecting red laser:
+	usingRedLaser = true;
+	usingGreenLaser = false;
 	//cv::VideoCapture capture = new cv::VideoCapture();
 
 	createMenus();
@@ -198,6 +205,23 @@ void MainWindow::createMenus()
 	scanMenu = menuBar()->addMenu(tr("&Scan"));
 	scanMenu->addAction(saveScanData);
 	scanMenu->addAction(surfMesh);
+
+	//Laser menu actions:
+	redLaser = new QAction(tr("Red Laser"), this);
+	redLaser->setCheckable(true);
+	redLaser->setChecked(true);
+	connect(redLaser, SIGNAL(toggled(bool)), this, SLOT(useRedLaser(bool)));
+
+	greenLaser = new QAction(tr("Green Laser"), this);
+	greenLaser->setCheckable(true);
+	greenLaser->setChecked(false);
+	connect(greenLaser, SIGNAL(toggled(bool)), this, SLOT(useGreenLaser(bool)));
+
+	//laser Menu:
+	laserMenu = menuBar()->addMenu(tr("Laser"));
+	laserMenu->addAction(redLaser);
+	laserMenu->addAction(greenLaser); 
+
 
 	//Help menu actions:
 	aboutAct = new QAction(tr("&About"), this);
@@ -743,10 +767,51 @@ void MainWindow::updateTracker()
 		bool isToolMatrixValid = false;
 		bool isCameraMatrixValid = false;
 
-		if (repository->GetTransform(laser2TrackerName, laser2Tracker, &isToolMatrixValid) == PLUS_SUCCESS && isToolMatrixValid)
-			trackerControl->lightWidgets[1]->setGreen();
-		else
-			trackerControl->lightWidgets[1]->setRed();
+		if (usingRedLaser)
+		{
+			if (repository->GetTransform(rLaser2TrackerName, rLaser2Tracker, &isToolMatrixValid) == PLUS_SUCCESS && isToolMatrixValid)
+				trackerControl->lightWidgets[1]->setGreen();
+			else
+				trackerControl->lightWidgets[1]->setRed();
+
+			if (repository->GetTransform(rNormal2TrackerName, rNormal2Tracker, &isValid) != PLUS_SUCCESS || !isValid)
+			{
+				LOG_ERROR("Unable to successfully transform red plane normal to tracker");
+				trackReady = false;
+				return;
+			}
+
+			if (repository->GetTransform(rOrigin2TrackerName, rOrigin2Tracker, &isValid) != PLUS_SUCCESS || !isValid)
+			{
+				LOG_ERROR("Unable to successfully transform red plane origin to tracker");
+				trackReady = false;
+				return;
+			}
+		}
+
+		if (usingGreenLaser)
+		{
+			if (repository->GetTransform(gLaser2TrackerName, gLaser2Tracker, &isToolMatrixValid) == PLUS_SUCCESS && isToolMatrixValid)
+				trackerControl->lightWidgets[1]->setGreen();
+			else
+				trackerControl->lightWidgets[1]->setRed(); 
+			
+
+			if (repository->GetTransform(gNormal2TrackerName, gNormal2Tracker, &isValid) != PLUS_SUCCESS || !isValid)
+			{
+				LOG_ERROR("Unable to successfully transform plane normal to tracker");
+				trackReady = false;
+				return;
+			}
+
+			if (repository->GetTransform(gOrigin2TrackerName, gOrigin2Tracker, &isValid) != PLUS_SUCCESS || !isValid) 
+			{
+				LOG_ERROR("Unable to successfully transform plane origin to tracker");
+				trackReady = false;
+				return;
+			}
+
+		}
 
 		if (repository->GetTransform(camera2TrackerName, camera2Tracker, &isCameraMatrixValid) == PLUS_SUCCESS && isCameraMatrixValid)
 			trackerControl->lightWidgets[0]->setGreen();
@@ -755,32 +820,14 @@ void MainWindow::updateTracker()
 			trackerControl->lightWidgets[0]->setRed();
 
 
-		if (repository->GetTransform(normal2TrackerName, normal2Tracker, &isValid) != PLUS_SUCCESS || !isValid) {
-			LOG_ERROR("Unable to successfully transform plane normal to tracker");
-			trackReady = false;
-			return;
-		}
-		if (repository->GetTransform(origin2TrackerName, origin2Tracker, &isValid) != PLUS_SUCCESS || !isValid) {
-			LOG_ERROR("Unable to successfully transform plane origin to tracker");
-			trackReady = false;
-			return;
-		}
-
+		
 		if (repository->GetTransform(imagePlane2TrackerName, imagePlane2Tracker, &isValid) != PLUS_SUCCESS || !isValid)
 		{
 			LOG_ERROR("Unable to successfully transform image plane to tracker");
 			trackReady = false;
 			return;
 		}
-		/*
-		if (repository->GetTransform(camera2ImageName, camera2Image, &isValid) != PLUS_SUCCESS || !isValid)
-		{
-		LOG_ERROR("Unable to successfully transform camera to image");
-		trackReady = false;
-		return;
-		}
-		*/
-
+		
 		if (repository->GetTransform(tracker2ImagePlaneName, tracker2ImagePlane, &isValid) != PLUS_SUCCESS || !isValid)
 		{
 			LOG_ERROR("Unable to successfully transform tracker 2 image plane");
@@ -802,17 +849,32 @@ void MainWindow::getProjectionPosition()
 
 void MainWindow::getNormalPosition()
 {
-	normal.x = normal2Tracker->GetElement(0, 3);
-	normal.y = normal2Tracker->GetElement(1, 3);
-	normal.z = normal2Tracker->GetElement(2, 3);
+	normal.x = rNormal2Tracker->GetElement(0, 3);
+	normal.y = rNormal2Tracker->GetElement(1, 3);
+	normal.z = rNormal2Tracker->GetElement(2, 3);
 }
 
 void MainWindow::getOriginPosition()
 {
-	origin.x = origin2Tracker->GetElement(0, 3);
-	origin.y = origin2Tracker->GetElement(1, 3);
-	origin.z = origin2Tracker->GetElement(2, 3);
+	origin.x = rOrigin2Tracker->GetElement(0, 3);
+	origin.y = rOrigin2Tracker->GetElement(1, 3);
+	origin.z = rOrigin2Tracker->GetElement(2, 3);
 }
+
+void MainWindow::getGreenNormalPosition()
+{
+	normal.x = gNormal2Tracker->GetElement(0, 3);
+	normal.y = gNormal2Tracker->GetElement(1, 3);
+	normal.z = gNormal2Tracker->GetElement(2, 3);
+}
+
+void MainWindow::getGreenOriginPosition()
+{
+	origin.x = gOrigin2Tracker->GetElement(0, 3);
+	origin.y = gOrigin2Tracker->GetElement(1, 3);
+	origin.z = gOrigin2Tracker->GetElement(2, 3);
+}
+
 
 void MainWindow::saveButtonPressed()
 {
@@ -1115,11 +1177,11 @@ void MainWindow::camWebcam(bool checked)
 
 void MainWindow::saveDataClicked(bool checked)
 {
-	saveDataBool = !saveDataBool;
-	if (!saveDataBool)
-		saveScanData->setChecked(false);
-	else
-		saveScanData->setChecked(true);
+saveDataBool = !saveDataBool;
+if (!saveDataBool)
+saveScanData->setChecked(false);
+else
+saveScanData->setChecked(true);
 
 }
 
@@ -1214,7 +1276,49 @@ cv::Mat MainWindow::subtractLaser(cv::Mat &laserOff, cv::Mat &laserOn)
 	return lineImg;
 }
 
+int* MainWindow::subImAlgo(cv::Mat &laserOff, cv::Mat &laserOn, int maxIndicies[])
+{
+	//Define local cv"mats
+	cv::Mat subImg, bgr[3], filteredRed, threshImg, convImg;
+	//subtract laser on and off matricies to get the laser
+	cv::subtract(laserOn, laserOff, subImg);
+	//split subtracted image into red channel
+	cv::split(subImg, bgr);
 
+	//use median blur to eliminate noise in background
+	cv::medianBlur(bgr[2], filteredRed,9 );
+
+	//Perform convolution using formula from conv2 matlab
+	int const gsize = 30; 
+	int const sigma = 30; 
+	double sumGaussfilt = 28.7156;	//derived in matlab
+	int linspace[gsize];
+	double gaussFilt[gsize];
+	cv::Mat gaussDist(1, gsize, CV_32F);
+	for (int i = 0; i < gsize; i++)
+	{
+		linspace[i] = -gsize / 2 + i*gsize / (gsize - 1);
+		//gaussFilt[i] = (exp(-1 * (linspace[i] ^ 2) / 2 * sigma ^ 2))/sumGaussfilt;
+		gaussDist.at<float>(0,i) = (exp(-1 * (linspace[i] ^ 2) / 2 * sigma ^ 2)) / sumGaussfilt;
+	}
+	
+
+	//Matrix<double> h(1, 30);
+	filter2D(filteredRed, convImg, -1, gaussDist, cv::Point(-1, -1), 0, 0);
+	//threshold image: if > 10 
+	cv::threshold(convImg, threshImg, 10, 255, CV_THRESH_TOZERO);
+	cv::imshow( "Convoluted and Thresh", threshImg);
+
+	for (int row = 0; row < laserOff.rows; row++) {
+		for (int col = 0; col < laserOff.cols; col++)
+		{
+			if (threshImg.at<uchar>(row, col) > maxIndicies[row])		//find col of highest intensity per row
+				maxIndicies[row] = col; 
+		}
+	}
+	
+	return maxIndicies; 
+}
 
 vector<cv::Vec4i> MainWindow::detectLaserLine(cv::Mat &laserOff, cv::Mat &laserOn)
 {
@@ -1247,11 +1351,19 @@ void MainWindow::framePointsToCloud(cv::Mat &laserOn, cv::Mat &laserOff, int res
 	//get camera centre 
 	getProjectionPosition();	//updates camera coords
 
-								//laser plane geometry								
-	getNormalPosition();		//updates normal
-	getOriginPosition();		//updates origin
+								//laser plane geometry
+	if (usingRedLaser) {
+		getNormalPosition();		//updates normal
+		getOriginPosition();		//updates origin
+	}
 
-	cv::Mat laserLineImg = subtractLaser(laserOff, laserOn);
+	else {
+		getGreenNormalPosition();		//updates normal
+		getGreenOriginPosition();		//updates origin
+	}
+
+	//vector<cv::Vec2i> maxColValues = subImAlgo(laserOff, laserOn);
+	cv::Mat laserLineImg = subtractLaser(laserOn, laserOff);
 	linalg::EndoPt pixel, calcPixel;
 
 	for (int row = VERTICAL_OFFSET; row < laserLineImg.rows - VERTICAL_OFFSET; row += res) {
@@ -1381,4 +1493,20 @@ void MainWindow::contrastChanged(int sliderPos)
 void MainWindow::brightnessChanged(int sliderPos)
 {
 	brightness = sliderPos;
+}
+
+void MainWindow::useGreenLaser()
+{
+	usingGreenLaser = true; 
+	usingRedLaser = false;
+	greenLaser->setChecked(true);
+	redLaser->setChecked(false);
+}
+
+void MainWindow::useRedLaser()
+{
+	usingGreenLaser = false;
+	usingRedLaser = true;
+	greenLaser->setChecked(false);
+	redLaser->setChecked(true);
 }
