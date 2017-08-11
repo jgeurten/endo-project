@@ -10,27 +10,21 @@ long prevTime = 0;
 long currTime = 0;
 
 volatile byte laserState;
-volatile bool pwmEnabled;
 
 void initializeLaser()
 {
 	Serial.begin(BAUD_RATE);
 	
 	pinMode(LASER_ENABLE_PIN, OUTPUT);
-	pinMode(LASER_PWM_PIN, OUTPUT);
- 
 	digitalWrite(LASER_ENABLE_PIN, LOW);
-	digitalWrite(LASER_PWM_PIN, LOW);
 
 	isLaserOn = false;
-	pwmEnabled = false;
 	laserState = LOW;
-
 }
 
 void laserOn()
 {
-	if (!isLaserOn && !pwmEnabled) {
+	if (!isLaserOn) {
 		digitalWrite(LASER_ENABLE_PIN, HIGH);
 		isLaserOn = true;
 	}
@@ -40,7 +34,7 @@ void laserOn()
 
 void laserOff()
 {
-	if (isLaserOn && !pwmEnabled) {
+	if (isLaserOn) {
 		digitalWrite(LASER_ENABLE_PIN, LOW);
 		isLaserOn = false;
 	}
@@ -48,22 +42,6 @@ void laserOff()
 		return;
 }
 
-void laserPWM()
-{
-	if (pwmEnabled)
-	{
-		laserState = !laserState;
-		laserState = HIGH;  //for constant laser line
-		digitalWrite(LASER_ENABLE_PIN, laserState);
-	}
-	else
-		return;
-}
-
-void PWMButtonPress()
-{
-	pwmEnabled = !pwmEnabled;
-}
 
 void laserButtonPress()
 {

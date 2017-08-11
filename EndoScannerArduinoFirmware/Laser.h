@@ -11,9 +11,5 @@ void initializeLaser();
 void laserOn();
 void laserOff();
 void laserPWM();
-void PWMButtonPress();
-void laserButtonPress();
-
-//bool isLaserOn;
 
 #endif // !LASER_H
