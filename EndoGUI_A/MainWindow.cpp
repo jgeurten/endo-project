@@ -868,34 +868,72 @@ void MainWindow::paintEvent(QPaintEvent*)
 {
 	QPainter painter(this);
 	painter.drawImage(QRectF(300, 100, frameWidth, frameHeight), image);
-	qDebug() << "Stream Video Thread";
 }
 
 void MainWindow::toggleLaser()
 {
 	mcuControl->laserButton->setChecked(false);
 
-	if (mcuConnected && !laserOn) {
+	if (mcuConnected && !laserOn) 
+	{
+		//serialPort->flush();			//end of transmission 
 		const char hg[1] = { '1'};
 		QByteArray writeDataon(hg);
 
-		qint64 bytesWritten = serialPort->write(writeDataon);
-		if (bytesWritten > 0) {
-			laserOn = true;
-			mcuControl->laserButton->setText(tr("Laser Off"));
-			mcuControl->laserButton->setChecked(true);
+		qint64 bytesWritten = serialPort->write("1");
+		if (bytesWritten > 0)
+		{
+			Sleep(10);
+			if (serialPort->bytesAvailable() > 0)
+			{
+				char test[3] = { 'O', 'N', '\0' };
+				char data[3];
+				qint64 maxSize = 3;
+				serialPort->readLine(data, maxSize);
+				data[2] = '\0';
+				if (strcmp(data, test) == 0)
+				{
+					laserOn = true;
+					mcuControl->laserButton->setText(tr("Laser Off"));
+					mcuControl->laserButton->setChecked(true);
+				}
+				else
+					toggleLaser();			//laser not on, try again. 
+			}
 		}
-	}
-	else if (mcuConnected && laserOn) {
+	}		
+	//All takes 1ms + sleep delay
+
+	else if (mcuConnected && laserOn) 
+	{
+		serialPort->flush();			
 		QByteArray writeData("2");
 		
 		qint64 bytesWritten = serialPort->write(writeData);
-		if (bytesWritten > 0) {
-			laserOn = false;
-			mcuControl->laserButton->setText(tr("Laser On"));
+		if (bytesWritten > 0) 
+		{
+			Sleep(10);
+			if (serialPort->bytesAvailable() > 0)
+			{
+				char offtest[4] = { 'O', 'F', 'F','\0' };
+				char offdata[10];
+				qint64 maxSize = 10;
+				serialPort->read(offdata, maxSize);
+				offdata[3] = '\0';
+				if (strcmp(offdata, offtest) == 0)
+				{
+					laserOn = false;
+					mcuControl->laserButton->setText(tr("Laser On"));
+					mcuControl->laserButton->setChecked(false);
+				}
+				else
+					toggleLaser();			//laser not on, try again. 
+			}
 		}
 	}
-	else {
+
+	else 
+	{
 		statusBar()->showMessage(tr("Connect MCU First"), 2000);
 	}
 }
@@ -986,7 +1024,7 @@ void MainWindow::connectMCU() {
 			serialPort->setPortName(QString::fromStdString(portname));
 			serialPort->setBaudRate(QSerialPort::Baud9600);
 			serialPort->setParity(QSerialPort::NoParity);			//no parity
-			serialPort->setReadBufferSize(6);						//qserialport will buffer 4 bytes( 0x 33 22 11 00) 
+			serialPort->setReadBufferSize(4);						//qserialport will buffer 4 bytes( 0x 33 22 11 00) 
 			serialPort->setFlowControl(QSerialPort::NoFlowControl);
 
 			if (!serialPort->open(QIODevice::ReadWrite))
