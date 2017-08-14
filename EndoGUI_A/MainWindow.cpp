@@ -1308,6 +1308,7 @@ int* MainWindow::subImAlgo(cv::Mat &laserOff, cv::Mat &laserOn)
 	cv::imshow("filtered red", filteredRed);
 	//Perform convolution using formula from conv2 matlab
 	int const gsize = 30; 
+	
 	int const sigma = 30; 
 	double sumGaussfilt = 28.7156;	//derived in matlab
 	int linspace[gsize];
@@ -1322,7 +1323,11 @@ int* MainWindow::subImAlgo(cv::Mat &laserOff, cv::Mat &laserOn)
 	
 	int maxIndicies[480];
 	//Matrix<double> h(1, 30);
-	filter2D(filteredRed, convImg, -1, gaussDist, cv::Point(-1, -1), 0, 0);
+	
+	cv::GaussianBlur(filteredRed, convImg, cv::Size(29, 29), (double)sigma, 0, 4);
+	//filter2D(filteredRed, convImg, -1, gaussDist, cv::Point(-1, -1), 0, 0);
+
+
 	//threshold image: if > 10 
 	cv::threshold(convImg, threshImg, 10, 255, CV_THRESH_TOZERO);
 	cv::imshow( "Convoluted and Thresh", threshImg);
@@ -1334,6 +1339,16 @@ int* MainWindow::subImAlgo(cv::Mat &laserOff, cv::Mat &laserOn)
 				maxIndicies[row] = col; 
 		}
 	}
+
+	cv::Mat result(480, 640, CV_8U, cv::Scalar(0));	//fill with 0's for black and white img 
+
+	for (int iterator = 0; iterator < laserOff.rows; iterator++)
+	{
+		if (maxIndicies[iterator] > 0)												//if max col val is 0, not part of laser
+			result.at<uchar>(iterator, maxIndicies[iterator]) = 255;
+	}
+
+	imshow("Result", result);
 	int* test = maxIndicies;
 	return test; 
 }
