@@ -275,8 +275,8 @@ private:
 	void surfMeshClicked(bool);
 	void camWebcam(bool);
 	void camEndocam(bool);
-	void useRedLaser();
-	void useGreenLaser();
+	void useRedLaser(bool);
+	void useGreenLaser(bool);
 	void saveDataClicked(bool);
 	void updateTracker();
 	string savePointCloud();
