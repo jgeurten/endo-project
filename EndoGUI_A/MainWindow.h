@@ -288,7 +288,7 @@ private:
 	void about();
 	void framePointsToCloud(cv::Mat &laserOff, cv::Mat &laserOn, int res);//, EndoModel* model);
 	cv::Mat subtractLaser(cv::Mat &laserOff, cv::Mat &laserOn);
-	int* subImAlgo(cv::Mat &laserOff, cv::Mat &laserOn, int maxIndicies[]);
+	int* subImAlgo(cv::Mat &laserOff, cv::Mat &laserOn);
 	vector<cv::Vec4i> detectLaserLine(cv::Mat &laserOff, cv::Mat &laserOn);
 	void contrastChanged(int sliderPos);
 	void brightnessChanged(int sliderPos);

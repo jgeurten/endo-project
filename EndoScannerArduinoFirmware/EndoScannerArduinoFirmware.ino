@@ -17,7 +17,7 @@ void setup()
  Serial.begin(9600); 
  // attachInterrupt(digitalPinToInterrupt(ISR_PIN), buttonPress, CHANGE);
  pinMode(2, OUTPUT); 
- digitalWrite(2, LOW); 
+ digitalWrite(2, LOW); //change
 
 }
 
@@ -28,13 +28,13 @@ void loop()
     serialMsg = Serial.read(); 
     if(serialMsg == '1')
      {
-       Serial.println("ON"); 
+       Serial.print("ON"); 
        digitalWrite(2, HIGH); 
        
      }
      if(serialMsg =='2')
      {
-       Serial.println("OFF"); 
+       Serial.print("OFF"); 
        digitalWrite(2, LOW); 
      }
   }

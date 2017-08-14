@@ -210,12 +210,12 @@ void MainWindow::createMenus()
 	redLaser = new QAction(tr("Red Laser"), this);
 	redLaser->setCheckable(true);
 	redLaser->setChecked(true);
-	connect(redLaser, SIGNAL(toggled(bool)), this, SLOT(useRedLaser(bool)));
+	connect(redLaser, SIGNAL(toggled(bool)), this, SLOT(useRedLaser()));
 
 	greenLaser = new QAction(tr("Green Laser"), this);
 	greenLaser->setCheckable(true);
 	greenLaser->setChecked(false);
-	connect(greenLaser, SIGNAL(toggled(bool)), this, SLOT(useGreenLaser(bool)));
+	connect(greenLaser, SIGNAL(toggled(bool)), this, SLOT(useGreenLaser()));
 
 	//laser Menu:
 	laserMenu = menuBar()->addMenu(tr("Laser"));
@@ -767,6 +767,13 @@ void MainWindow::updateTracker()
 		bool isToolMatrixValid = false;
 		bool isCameraMatrixValid = false;
 
+		//Camera transforms first
+		if (repository->GetTransform(camera2TrackerName, camera2Tracker, &isCameraMatrixValid) == PLUS_SUCCESS && isCameraMatrixValid)
+			trackerControl->lightWidgets[0]->setGreen();
+
+		else
+			trackerControl->lightWidgets[0]->setRed();
+
 		if (usingRedLaser)
 		{
 			if (repository->GetTransform(rLaser2TrackerName, rLaser2Tracker, &isToolMatrixValid) == PLUS_SUCCESS && isToolMatrixValid)
@@ -812,14 +819,6 @@ void MainWindow::updateTracker()
 			}
 
 		}
-
-		if (repository->GetTransform(camera2TrackerName, camera2Tracker, &isCameraMatrixValid) == PLUS_SUCCESS && isCameraMatrixValid)
-			trackerControl->lightWidgets[0]->setGreen();
-
-		else
-			trackerControl->lightWidgets[0]->setRed();
-
-
 		
 		if (repository->GetTransform(imagePlane2TrackerName, imagePlane2Tracker, &isValid) != PLUS_SUCCESS || !isValid)
 		{
@@ -945,7 +944,10 @@ void MainWindow::toggleLaser()
 		qint64 bytesWritten = serialPort->write("1");
 		if (bytesWritten > 0)
 		{
-			Sleep(10);
+			laserOn = true;
+			mcuControl->laserButton->setText(tr("Laser Off"));
+			mcuControl->laserButton->setChecked(true);
+		/*	Sleep(10);
 			if (serialPort->bytesAvailable() > 0)
 			{
 				char test[3] = { 'O', 'N', '\0' };
@@ -962,6 +964,7 @@ void MainWindow::toggleLaser()
 				else
 					toggleLaser();			//laser not on, try again. 
 			}
+			*/
 		}
 	}		
 	//All takes 1ms + sleep delay
@@ -974,6 +977,7 @@ void MainWindow::toggleLaser()
 		qint64 bytesWritten = serialPort->write(writeData);
 		if (bytesWritten > 0) 
 		{
+			/*
 			Sleep(10);
 			if (serialPort->bytesAvailable() > 0)
 			{
@@ -991,6 +995,10 @@ void MainWindow::toggleLaser()
 				else
 					toggleLaser();			//laser not on, try again. 
 			}
+			*/
+			laserOn = false;
+			mcuControl->laserButton->setText(tr("Laser On"));
+			mcuControl->laserButton->setChecked(false);
 		}
 	}
 
@@ -1276,18 +1284,22 @@ cv::Mat MainWindow::subtractLaser(cv::Mat &laserOff, cv::Mat &laserOn)
 	return lineImg;
 }
 
-int* MainWindow::subImAlgo(cv::Mat &laserOff, cv::Mat &laserOn, int maxIndicies[])
+int* MainWindow::subImAlgo(cv::Mat &laserOff, cv::Mat &laserOn)
 {
 	//Define local cv"mats
 	cv::Mat subImg, bgr[3], filteredRed, threshImg, convImg;
 	//subtract laser on and off matricies to get the laser
 	cv::subtract(laserOn, laserOff, subImg);
+
+	cv::imshow("subtract", subImg);
 	//split subtracted image into red channel
 	cv::split(subImg, bgr);
 
 	//use median blur to eliminate noise in background
 	cv::medianBlur(bgr[2], filteredRed,9 );
 
+
+	cv::imshow("filtered red", filteredRed);
 	//Perform convolution using formula from conv2 matlab
 	int const gsize = 30; 
 	int const sigma = 30; 
@@ -1302,7 +1314,7 @@ int* MainWindow::subImAlgo(cv::Mat &laserOff, cv::Mat &laserOn, int maxIndicies[
 		gaussDist.at<float>(0,i) = (exp(-1 * (linspace[i] ^ 2) / 2 * sigma ^ 2)) / sumGaussfilt;
 	}
 	
-
+	int* maxIndicies[480];
 	//Matrix<double> h(1, 30);
 	filter2D(filteredRed, convImg, -1, gaussDist, cv::Point(-1, -1), 0, 0);
 	//threshold image: if > 10 
@@ -1312,12 +1324,12 @@ int* MainWindow::subImAlgo(cv::Mat &laserOff, cv::Mat &laserOn, int maxIndicies[
 	for (int row = 0; row < laserOff.rows; row++) {
 		for (int col = 0; col < laserOff.cols; col++)
 		{
-			if (threshImg.at<uchar>(row, col) > maxIndicies[row])		//find col of highest intensity per row
-				maxIndicies[row] = col; 
+			if (threshImg.at<uchar>(row, col) > *maxIndicies[row])		//find col of highest intensity per row
+				*maxIndicies[row] = col; 
 		}
 	}
 	
-	return maxIndicies; 
+	return *maxIndicies; 
 }
 
 vector<cv::Vec4i> MainWindow::detectLaserLine(cv::Mat &laserOff, cv::Mat &laserOn)
@@ -1340,6 +1352,8 @@ vector<cv::Vec4i> MainWindow::detectLaserLine(cv::Mat &laserOff, cv::Mat &laserO
 void MainWindow::framePointsToCloud(cv::Mat &laserOn, cv::Mat &laserOff, int res)//, EndoModel* model)
 {
 	//check if able to transform all entities into tracker space
+	int matindex[480];
+	int *test = subImAlgo(laserOn, laserOff);
 	if (!trackReady)
 	{
 		LOG_ERROR("Unable to transform one or many translations");
@@ -1362,7 +1376,6 @@ void MainWindow::framePointsToCloud(cv::Mat &laserOn, cv::Mat &laserOff, int res
 		getGreenOriginPosition();		//updates origin
 	}
 
-	//vector<cv::Vec2i> maxColValues = subImAlgo(laserOff, laserOn);
 	cv::Mat laserLineImg = subtractLaser(laserOn, laserOff);
 	linalg::EndoPt pixel, calcPixel;
 
