@@ -48,7 +48,7 @@ public:
 	void convertCloudToSurface();
 	void smoothCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr input, pcl::PointCloud<pcl::PointNormal> output);
 	static void createVTKSurface(string &filename);
-	static void createVTKPC(string filename); 
+	 void createVTKPC(string filename); 
 //Static functions:	
 	static void viewPointCloud(string &filename, int fileType, linalg::EndoPt camera);
 };

@@ -17,7 +17,7 @@ void setup()
  Serial.begin(9600); 
  // attachInterrupt(digitalPinToInterrupt(ISR_PIN), buttonPress, CHANGE);
  pinMode(2, OUTPUT); 
- digitalWrite(2, LOW); //change
+ digitalWrite(2, HIGH); //change
 
 }
 

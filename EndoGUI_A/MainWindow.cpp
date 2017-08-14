@@ -112,7 +112,7 @@ using namespace std;
 
 class ControlWidget;
 class MCUControlWidget;
-class QSerialPort; 
+class QSerialPort;
 
 MainWindow::MainWindow(QWidget *parent)
 	:QMainWindow(parent)
@@ -220,7 +220,7 @@ void MainWindow::createMenus()
 	//laser Menu:
 	laserMenu = menuBar()->addMenu(tr("Laser"));
 	laserMenu->addAction(redLaser);
-	laserMenu->addAction(greenLaser); 
+	laserMenu->addAction(greenLaser);
 
 
 	//Help menu actions:
@@ -634,21 +634,21 @@ void MainWindow::scanButtonPress()
 		isScanning = false;
 		ResultsFile.close();
 
-		//Remove outliers and down sample point cloud before saving
+/*		//Remove outliers and down sample point cloud before saving
 		int meanNN = 150;
 		float StdDev = 0.9;
 		statusBar()->showMessage(tr("Filtering Point Cloud. Please wait."), 8000);
 		//Want to see raw PC
 		Model->removeOutliers(meanNN, StdDev);	//updates pointcloud to point to a filtered pt cloud
-
+*/
 		string filename = savePointCloud();
 		//convert to surface mesh and save, if enabled
 		if (saveAsMesh) {
 			statusBar()->showMessage(tr("Converting Point Cloud to Surface Mesh. This can take awhile."), 15000);
-			Model->convertCloudToSurface();
+//			Model->convertCloudToSurface();
 			string st = filename.substr(0, filename.size() - 3);
 			string filenameOBJ = st + "OBJ";
-			Model->saveMesh(filenameOBJ);
+//			Model->saveMesh(filenameOBJ);
 			statusBar()->showMessage(tr("Finished Saving Point Cloud and Mesh. Ready."), 3000);
 
 		}
@@ -657,8 +657,7 @@ void MainWindow::scanButtonPress()
 
 string MainWindow::savePointCloud()
 {
-
-		QString filename = QFileDialog::getSaveFileName(this, "Save File", tr("./Results"), "PCD (*.pcd) ;; PLY (*.ply)");
+	QString filename = QFileDialog::getSaveFileName(this, "Save File", tr("./Results"), "PCD (*.pcd) ;; PLY (*.ply)");
 
 	if (filename.isEmpty()) return "";
 	qDebug() << filename;
@@ -732,21 +731,21 @@ void MainWindow::arduinoPausePress()
 
 void MainWindow::updateTracker()
 {
-	if (mcuConnected) 
+	if (mcuConnected)
 	{
 		if (serialPort->bytesAvailable() > 0)		//check for data synch
 		{
-			char data[7]; 
+			char data[7];
 			qint64 maxSize = 6;
 			Sleep(10);								//allow for all data to terminate writing before reading
 			serialPort->read(data, maxSize);
-			data[6] = '\0'; 
-			if(strcmp(data, gobuttonres) == 0  )
+			data[6] = '\0';
+			if (strcmp(data, gobuttonres) == 0)
 				arduinoScanPress();
-			
-			if(data == pauseButtonRes)
+
+			if (data == pauseButtonRes)
 				arduinoPausePress();
-			
+
 			serialPort->clear();						//clear buffer
 		}
 	}
@@ -803,8 +802,8 @@ void MainWindow::updateTracker()
 			if (repository->GetTransform(gLaser2TrackerName, gLaser2Tracker, &isToolMatrixValid) == PLUS_SUCCESS && isToolMatrixValid)
 				trackerControl->lightWidgets[1]->setGreen();
 			else
-				trackerControl->lightWidgets[1]->setRed(); 
-			
+				trackerControl->lightWidgets[1]->setRed();
+
 
 			if (repository->GetTransform(gNormal2TrackerName, gNormal2Tracker, &isValid) != PLUS_SUCCESS || !isValid)
 			{
@@ -813,7 +812,7 @@ void MainWindow::updateTracker()
 				return;
 			}
 
-			if (repository->GetTransform(gOrigin2TrackerName, gOrigin2Tracker, &isValid) != PLUS_SUCCESS || !isValid) 
+			if (repository->GetTransform(gOrigin2TrackerName, gOrigin2Tracker, &isValid) != PLUS_SUCCESS || !isValid)
 			{
 				LOG_ERROR("Unable to successfully transform plane origin to tracker");
 				trackReady = false;
@@ -821,14 +820,14 @@ void MainWindow::updateTracker()
 			}
 
 		}
-		
+
 		if (repository->GetTransform(imagePlane2TrackerName, imagePlane2Tracker, &isValid) != PLUS_SUCCESS || !isValid)
 		{
 			LOG_ERROR("Unable to successfully transform image plane to tracker");
 			trackReady = false;
 			return;
 		}
-		
+
 		if (repository->GetTransform(tracker2ImagePlaneName, tracker2ImagePlane, &isValid) != PLUS_SUCCESS || !isValid)
 		{
 			LOG_ERROR("Unable to successfully transform tracker 2 image plane");
@@ -937,10 +936,10 @@ void MainWindow::toggleLaser()
 {
 	mcuControl->laserButton->setChecked(false);
 
-	if (mcuConnected && !laserOn) 
+	if (mcuConnected && !laserOn)
 	{
 		//serialPort->flush();			//end of transmission 
-		const char hg[1] = { '1'};
+		const char hg[1] = { '1' };
 		QByteArray writeDataon(hg);
 
 		qint64 bytesWritten = serialPort->write("1");
@@ -949,35 +948,35 @@ void MainWindow::toggleLaser()
 			laserOn = true;
 			mcuControl->laserButton->setText(tr("Laser Off"));
 			mcuControl->laserButton->setChecked(true);
-		/*	Sleep(10);
-			if (serialPort->bytesAvailable() > 0)
-			{
-				char test[3] = { 'O', 'N', '\0' };
-				char data[3];
-				qint64 maxSize = 3;
-				serialPort->readLine(data, maxSize);
-				data[2] = '\0';
-				if (strcmp(data, test) == 0)
+			/*	Sleep(10);
+				if (serialPort->bytesAvailable() > 0)
 				{
-					laserOn = true;
-					mcuControl->laserButton->setText(tr("Laser Off"));
-					mcuControl->laserButton->setChecked(true);
+					char test[3] = { 'O', 'N', '\0' };
+					char data[3];
+					qint64 maxSize = 3;
+					serialPort->readLine(data, maxSize);
+					data[2] = '\0';
+					if (strcmp(data, test) == 0)
+					{
+						laserOn = true;
+						mcuControl->laserButton->setText(tr("Laser Off"));
+						mcuControl->laserButton->setChecked(true);
+					}
+					else
+						toggleLaser();			//laser not on, try again.
 				}
-				else
-					toggleLaser();			//laser not on, try again. 
-			}
-			*/
+				*/
 		}
-	}		
+	}
 	//All takes 1ms + sleep delay
 
-	else if (mcuConnected && laserOn) 
+	else if (mcuConnected && laserOn)
 	{
-		serialPort->flush();			
+		serialPort->flush();
 		QByteArray writeData("2");
-		
+
 		qint64 bytesWritten = serialPort->write(writeData);
-		if (bytesWritten > 0) 
+		if (bytesWritten > 0)
 		{
 			//Read response protocol:
 
@@ -997,7 +996,7 @@ void MainWindow::toggleLaser()
 					mcuControl->laserButton->setChecked(false);
 				}
 				else
-					toggleLaser();			//laser not on, try again. 
+					toggleLaser();			//laser not on, try again.
 			}
 			*/
 			laserOn = false;
@@ -1006,7 +1005,7 @@ void MainWindow::toggleLaser()
 		}
 	}
 
-	else 
+	else
 	{
 		statusBar()->showMessage(tr("Connect MCU First"), 2000);
 	}
@@ -1022,7 +1021,7 @@ QImage MainWindow::mat_to_qimage(cv::Mat laserOffImg, QImage::Format format)
 void MainWindow::connectMCU() {
 
 	mcuControl->mcuButton->setChecked(false);
-	if (!mcuConnected) 
+	if (!mcuConnected)
 	{
 		//Initialize all serial commands: msg = send to arduino. res = received from arduino
 
@@ -1034,14 +1033,14 @@ void MainWindow::connectMCU() {
 		//  laserOnMsg[3] = 0x00;		//Sent							0,0
 
 		QString temp("FFFFAA00");
-		laserOnMsg = temp.toLatin1(); 
-		
+		laserOnMsg = temp.toLatin1();
+
 		//turn laser off command
 		laserOffMsg.resize(4);
 		laserOffMsg[0] = 0xFF;
 		laserOffMsg[1] = 0x00;		//Off
 		laserOffMsg[2] = 0xAA;
-		laserOffMsg[3] = 0x00; 
+		laserOffMsg[3] = 0x00;
 
 		//Receive from Arduino signalling received laser on msg
 		laserOnRes.resize(4);
@@ -1055,7 +1054,7 @@ void MainWindow::connectMCU() {
 		laserOffRes[0] = 0xFF;		//Response
 		laserOffRes[1] = 0xAA;		//On		
 		laserOffRes[2] = 0xA3;		//Laser
-		
+
 
 		//send to mcu when go button res has been received
 		goButtonMsg.resize(4);
@@ -1073,7 +1072,7 @@ void MainWindow::connectMCU() {
 		//QString temp2("FFAAB3");
 		//goButtonRes = temp2.toLatin1();
 
-		
+
 		//Send to mcu after getting pause res
 		pauseButtonMsg.resize(4);
 		pauseButtonMsg[0] = 0xFF;		//Message
@@ -1094,7 +1093,7 @@ void MainWindow::connectMCU() {
 		portname = "COM" + to_string(portnumber);
 
 		if (okay && portnumber > 0) {
-			serialPort = new QSerialPort(); 
+			serialPort = new QSerialPort();
 			serialPort->setPortName(QString::fromStdString(portname));
 			serialPort->setBaudRate(QSerialPort::Baud9600);
 			serialPort->setParity(QSerialPort::NoParity);			//no parity
@@ -1140,7 +1139,9 @@ void MainWindow::viewCloudClicked()
 		return;
 
 	else
-		EndoModel::createVTKPC(filename.toStdString());
+		return;
+		//TO DO:
+		//EndoModel::createVTKPC(filename.toStdString());
 }
 
 void MainWindow::camWebcam(bool checked)
@@ -1189,11 +1190,11 @@ void MainWindow::camWebcam(bool checked)
 
 void MainWindow::saveDataClicked(bool checked)
 {
-saveDataBool = !saveDataBool;
-if (!saveDataBool)
-saveScanData->setChecked(false);
-else
-saveScanData->setChecked(true);
+	saveDataBool = !saveDataBool;
+	if (!saveDataBool)
+		saveScanData->setChecked(false);
+	else
+		saveScanData->setChecked(true);
 
 }
 
@@ -1288,12 +1289,12 @@ cv::Mat MainWindow::subtractLaser(cv::Mat &laserOff, cv::Mat &laserOn)
 	return lineImg;
 }
 
-int* MainWindow::subImAlgo(cv::Mat &laserOff, cv::Mat &laserOn)
+cv::Mat MainWindow::subImAlgo(cv::Mat &laserOff, cv::Mat &laserOn)
 {
 	cv::imshow("On", laserOn);
 	cv::imshow("OFF", laserOff);
 	//Define local cv"mats
-	cv::Mat subImg, bgr[3], filteredRed, threshImg, convImg;
+	cv::Mat subImg, bgr[3], filteredRed, threshImg, greyMat, convImg;
 	//subtract laser on and off matricies to get the laser
 	cv::subtract(laserOn, laserOff, subImg);
 
@@ -1302,14 +1303,14 @@ int* MainWindow::subImAlgo(cv::Mat &laserOff, cv::Mat &laserOn)
 	cv::split(subImg, bgr);
 
 	//use median blur to eliminate noise in background
-	cv::medianBlur(bgr[1], filteredRed,9 );
+	cv::medianBlur(bgr[1], filteredRed, 9);
 
 
 	cv::imshow("filtered red", filteredRed);
 	//Perform convolution using formula from conv2 matlab
-	int const gsize = 30; 
-	
-	int const sigma = 30; 
+	int const gsize = 30;
+
+	int const sigma = 30;
 	double sumGaussfilt = 28.7156;	//derived in matlab
 	int linspace[gsize];
 	double gaussFilt[gsize];
@@ -1318,39 +1319,21 @@ int* MainWindow::subImAlgo(cv::Mat &laserOff, cv::Mat &laserOn)
 	{
 		linspace[i] = -gsize / 2 + i*gsize / (gsize - 1);
 		//gaussFilt[i] = (exp(-1 * (linspace[i] ^ 2) / 2 * sigma ^ 2))/sumGaussfilt;
-		gaussDist.at<float>(0,i) = (exp(-1 * (linspace[i] ^ 2) / 2 * sigma ^ 2)) / sumGaussfilt;
+		gaussDist.at<float>(0, i) = (exp(-1 * (linspace[i] ^ 2) / 2 * sigma ^ 2)) / sumGaussfilt;
 	}
+
 	
-	int maxIndicies[480];
 	//Matrix<double> h(1, 30);
-	
+
 	cv::GaussianBlur(filteredRed, convImg, cv::Size(29, 29), (double)sigma, 0, 4);
 	//filter2D(filteredRed, convImg, -1, gaussDist, cv::Point(-1, -1), 0, 0);
 
 
 	//threshold image: if > 10 
-	cv::threshold(convImg, threshImg, 10, 255, CV_THRESH_TOZERO);
-	cv::imshow( "Convoluted and Thresh", threshImg);
+	cv::threshold(filteredRed, threshImg, 10, 255, CV_THRESH_TOZERO);
+	cv::imshow("Thresh", threshImg);
 
-	for (int row = 0; row < laserOff.rows; row++) {
-		for (int col = 0; col < laserOff.cols; col++)
-		{
-			if (threshImg.at<uchar>(row, col) > maxIndicies[row])		//find col of highest intensity per row	<- bug
-				maxIndicies[row] = col; 
-		}
-	}
-
-	cv::Mat result(480, 640, CV_8U, cv::Scalar(0));	//fill with 0's for black and white img 
-
-	for (int iterator = 0; iterator < laserOff.rows; iterator++)
-	{
-		if (maxIndicies[iterator] > 0)												//if max col val is 0, not part of laser
-			result.at<uchar>(iterator, maxIndicies[iterator]) = 255;
-	}
-
-	imshow("Result", result);
-	int* test = maxIndicies;
-	return test; 
+	return threshImg;
 }
 
 vector<cv::Vec4i> MainWindow::detectLaserLine(cv::Mat &laserOff, cv::Mat &laserOn)
@@ -1373,15 +1356,14 @@ vector<cv::Vec4i> MainWindow::detectLaserLine(cv::Mat &laserOff, cv::Mat &laserO
 void MainWindow::framePointsToCloud(cv::Mat &laserOn, cv::Mat &laserOff, int res)//, EndoModel* model)
 {
 	//check if able to transform all entities into tracker space
-	int matindex[480];
-	int *test = subImAlgo(laserOff, laserOn);
+	
 	if (!trackReady)
 	{
 		LOG_ERROR("Unable to transform one or many translations");
 		return;
 	}
 
-	if (paused) return; 
+	if (paused) return;
 
 	//get camera centre 
 	getProjectionPosition();	//updates camera coords
@@ -1397,37 +1379,61 @@ void MainWindow::framePointsToCloud(cv::Mat &laserOn, cv::Mat &laserOff, int res
 		getGreenOriginPosition();		//updates origin
 	}
 
-	cv::Mat laserLineImg = subtractLaser(laserOn, laserOff);
 	linalg::EndoPt pixel, calcPixel;
-//Debugging
-/*	for (int row = VERTICAL_OFFSET; row < laserLineImg.rows - VERTICAL_OFFSET; row += res) {
-		for (int col = HORIZONTAL_OFFSET; col < laserLineImg.cols - HORIZONTAL_OFFSET; col += res) {
-			if (laserLineImg.at<uchar>(row, col) == 255) {
+	cv::Mat laserLineImg = subImAlgo(laserOff, laserOn);
 
-				pixel = getPixelPosition(row, col);														//returns pixel 2 world coords
-				linalg::EndoLine camLine = linalg::lineFromPoints(camera, pixel);						//in world coordinates
-				linalg::EndoPt intersection = linalg::solveIntersection(normal, origin, camLine);		//in world coordinates
+	int maxIndicies[480] = {};	//initialize as all 0's in order to access laserLineImg.at<uchar>
 
-				if (intersection.x == 0.0) {
-					qDebug("No intersection found");
-					break;
-				}
-				else {
-					calcPixel = validatePixel(intersection);
-					Model->addPointToPointCloud(intersection);
-					if (saveDataBool)
-						saveData(camera, pixel, normal, origin, camLine, col, row, calcPixel, intersection);
-				}
+	for (int row = 0; row < laserOff.rows; row++) {
+		for (int col = 0; col < laserOff.cols; col++)
+		{
+			if (laserLineImg.at<uchar>(row, col) > laserLineImg.at<uchar>(row , maxIndicies[row]))		//find col of highest intensity per row	
+				maxIndicies[row] = col;
+		}
+	}
+
+	cv::Mat result(480, 640, CV_8U, cv::Scalar(0));	//fill with 0's for black and white img 
+
+	//Following is simply for visualization, nothing more
+	for (int iterator = 0; iterator < laserOff.rows; iterator++)
+	{
+		if (maxIndicies[iterator] > 0)												//if max col val is 0, not part of laser
+			result.at<uchar>(iterator, maxIndicies[iterator]) = 255;
+	}
+
+	imshow("Result", result);
+
+	//Debugging
+
+	for (int row = 0; row < laserOff.rows; row++)
+	{
+		if (maxIndicies[row] > 0)															//if max value is located at column = 0, laser line not detected for that row. 
+		{
+			pixel = getPixelPosition(row, maxIndicies[row]);														//returns pixel 2 world coords
+			linalg::EndoLine camLine = linalg::lineFromPoints(camera, pixel);						//in world coordinates
+			linalg::EndoPt intersection = linalg::solveIntersection(normal, origin, camLine);		//in world coordinates
+
+			if (intersection.x == 0.0)
+			{
+				qDebug("No intersection found");
+				break;
+			}
+			else
+			{
+				calcPixel = validatePixel(intersection);
+				Model->addPointToPointCloud(intersection);
+
+				if (saveDataBool)
+					saveData(camera, pixel, normal, origin, camLine, maxIndicies[row], row, calcPixel, intersection);
 			}
 		}
 	}
-	*/
 }
 
 linalg::EndoPt MainWindow::getPixelPosition(int row, int col)		//returns pixel location in tracker space
 {
 	linalg::EndoPt result;
-	double plane2World[4];
+	double plane2World[4];	//image plane 2 world not laser plane 2 world
 	double plane2FeaturePoint[4] = { col - 3.18246521e+002, row - 2.36307892e+002, 6.21962708e+002, 1 }; //homogenous transform from config file
 	imagePlane2Tracker->MultiplyPoint(plane2FeaturePoint, plane2World);
 	//Now have featurePoint 2 world: divide by 4th element in plane2World
@@ -1543,7 +1549,7 @@ void MainWindow::useGreenLaser(bool checked)
 
 void MainWindow::useRedLaser(bool checked)
 {
-	if (checked) 
+	if (checked)
 	{
 		usingGreenLaser = false;
 		usingRedLaser = true;

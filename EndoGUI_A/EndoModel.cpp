@@ -74,6 +74,7 @@ EndoModel::EndoModel()
 	pcl::PolygonMesh::Ptr _surfMesh(new pcl::PolygonMesh); 
 	this->surfaceMesh = _surfMesh;
 
+	this->points = vtkPoints::New();
 }
 
 void EndoModel::addPointToPointCloud(linalg::EndoPt point)
@@ -364,6 +365,7 @@ void EndoModel::createVTKPC(string filename)
 	//Create polydata structure and set points equal to vtkpoints pointer
 	vtkSmartPointer<vtkPolyData> polydata = vtkSmartPointer<vtkPolyData>::New();
 	
+	/*
 	vtkPoints* elves = vtkPoints::New();
 	float x, y, z;
 	// generate random points on unit sphere
@@ -381,8 +383,9 @@ void EndoModel::createVTKPC(string filename)
 
 		elves->InsertNextPoint(x, y, z);
 	}
+	*/
 
-	polydata->SetPoints(elves); 
+	polydata->SetPoints(points); 
 
 	// Construct the surface and create isosurface.	
 	vtkSmartPointer<vtkSurfaceReconstructionFilter> surface = vtkSmartPointer<vtkSurfaceReconstructionFilter>::New();
@@ -398,17 +401,30 @@ void EndoModel::createVTKPC(string filename)
 	// Sometimes the contouring algorithm can create a volume whose gradient
 	// vector and ordering of polygon (using the right hand rule) are
 	// inconsistent. vtkReverseSense cures this problem.
+	
+
+	string temp = filename.substr(0, filename.size() - 4);
+	string newfilename = temp + "reverse.ply";
+
+	//Save as PLY
+	vtkSmartPointer<vtkPLYWriter> plyWriter =
+		vtkSmartPointer<vtkPLYWriter>::New();
+	plyWriter->SetFileName(filename.c_str());
+	plyWriter->SetInputConnection(contourFilter->GetOutputPort());
+	plyWriter->Write();
+
+	/*
 	vtkSmartPointer<vtkReverseSense> reverse = vtkSmartPointer<vtkReverseSense>::New();
 	reverse->SetInputConnection(contourFilter->GetOutputPort());
 	reverse->ReverseCellsOn();
 	reverse->ReverseNormalsOn();
 	reverse->Update();
 
-	//Save as PLY
-	vtkSmartPointer<vtkPLYWriter> plyWriter =
+	vtkSmartPointer<vtkPLYWriter> plyReverseWriter =
 		vtkSmartPointer<vtkPLYWriter>::New();
-	plyWriter->SetFileName(filename.c_str());
-	plyWriter->SetInputConnection(reverse->GetOutputPort());
-	plyWriter->Write();
+	plyReverseWriter->SetFileName(newfilename.c_str());
+	plyReverseWriter->SetInputConnection(reverse->GetOutputPort());
+	plyReverseWriter->Write();
+	*/
 }
 
