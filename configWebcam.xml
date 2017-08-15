@@ -8,18 +8,22 @@
 	<Device
       Id="TrackerDevice"
       Type="PolarisTracker"
-      SerialPort="4"
+      SerialPort="7"
       BaudRate="115200"
 	  AcquisitionRate="60"
       ToolReferenceFrame="Tracker" >
       <DataSources>
 	  
 		<DataSource Type="Tool" Id="Camera" RomFile="ToolDefinitions/Camera.rom"  />
+		<DataSource Type="Tool" Id="RedLaser" RomFile="ToolDefinitions/laser_red.rom"    />
+		<DataSource Type="Tool" Id="GreenLaser" RomFile="ToolDefinitions/laser_green.rom"    />
       </DataSources>
       <OutputChannels>
-        <OutputChannel Id="TrackerStream" >
-			
+        <OutputChannel Id="TrackerStream" > 
 		  <DataSource Id="Camera"/>
+		  <DataSource Id="RedLaser"/>
+		  <DataSource Id="GreenLaser"/>
+
         </OutputChannel>
       </OutputChannels>
     </Device>
@@ -28,7 +32,7 @@
       Id="VideoDevice" 
       Type="MmfVideo" 
       FrameSize="640 480"
-      VideoFormat="YUY2"
+      VideoFormat="RGB24"
       CaptureDeviceId="0" >
       <DataSources>
         <DataSource Type="Video" Id="Video" PortUsImageOrientation="MF" ImageType="RGB_COLOR"  />
@@ -62,34 +66,56 @@
   </DataCollection>
 
   <CoordinateDefinitions>
-     
-	  
-    
-	  
 	<Transform From="Camera" To="ImagePlane"
 		Matrix="
 		-0.99981   -0.0148    -0.01251   -39.8957
 		0.001761   0.573427   -0.81925   -19.3914
 		0.019293   -0.81912   -0.57329   9.935949
-		0 0 0 1"
+		0 			0 		   0 		  1.0000"
       Error="0.02" Date="12102016_2318" />
-	
-	<Transform From="Laser" To="PlaneOrigin"
+			
+	<Transform From="RedLaser" To="RedPlaneOrigin"
 		Matrix="
-		1.0000		0 		0 		33.3550 
-		0          1.0000  0 		73.8980 
-		0          0 	 	1.0000	-43.4400 
+		1.0000		0 		0 		-1.3740 
+		0          1.0000  0 		39.6649
+		0          0 	 	1.0000	43.2534
 		0          0 	 	0.0000 	 1.0000"
-		Error="1.83" Date="20170630T2050" />
+		Error="1.83" Date="20170811" />
 		
-		
-		<Transform From="Laser" To="PlaneNormal"
+		<Transform From="Pixel" To="ImagePlane"
 		Matrix="
-		1.0000		0 		0 		-0.9800
-		0          1.0000  0 		-0.1985
-		0          0 	 	1.0000	-0.0155 
-		0          0 	 	0.0000 	 0"
+		1.0000		0 		0 		-3.18246521e+002
+		0          1.0000  0 		-2.36307892e+002
+		0          0 	 	6.21962708e+002	0 
+		0          0 	 	0.0000 	 1"
 		Error="1.83" Date="20170630T2050" />
+	
+		<Transform From="RedLaser" To="RedPlaneNormal"
+		Matrix="
+		1.0000		0 		0 		0.9996165
+		0          1.0000  0 		0.026238
+		0          0 	 	1.0000	 0.00885
+		0          0 	 	0.0000 	 0"
+		Error="1.83" Date="20170811" />
+	
+		
+	<Transform From="GreenLaser" To="GreenPlaneOrigin"
+		Matrix="
+		1.0000		0 		0 		-20.8072
+		0          1.0000  0 		-47.5405
+		0          0 	 	1.0000	-37.9944
+		0          0 	 	0.0000 	 1.0000"
+		Error="1.83" Date="20170811" />
+		
+	
+		<Transform From="GreenLaser" To="GreenPlaneNormal"
+		Matrix="
+		1.0000		0 		0 		-0.91212
+		0          1.0000  0 		0.409545
+		0          0 	 	1.0000	0.0175235
+		0          0 	 	0.0000 	 0"
+		Error="1.83" Date="20170811" />
+	
 	
   </CoordinateDefinitions>
   
