@@ -76,11 +76,11 @@
 			
 	<Transform From="RedLaser" To="RedPlaneOrigin"
 		Matrix="
-		1.0000		0 		0 		-1.3740 
-		0          1.0000  0 		39.6649
-		0          0 	 	1.0000	43.2534
+		1.0000		0 		0 		0.7252  
+		0          1.0000  0 		-44.0609
+		0          0 	 	1.0000	-33.8202
 		0          0 	 	0.0000 	 1.0000"
-		Error="1.83" Date="20170811" />
+		Error="1.83" Date="20170816" />
 		
 		<Transform From="Pixel" To="ImagePlane"
 		Matrix="
@@ -92,29 +92,29 @@
 	
 		<Transform From="RedLaser" To="RedPlaneNormal"
 		Matrix="
-		1.0000		0 		0 		0.9996165
-		0          1.0000  0 		0.026238
-		0          0 	 	1.0000	 0.00885
+		1.0000		0 		0 		0.99943
+		0          1.0000  0 		-0.008518
+		0          0 	 	1.0000	0.0326094
 		0          0 	 	0.0000 	 0"
-		Error="1.83" Date="20170811" />
+		Error="1.83" Date="20170816" />
 	
 		
 	<Transform From="GreenLaser" To="GreenPlaneOrigin"
 		Matrix="
-		1.0000		0 		0 		-20.8072
-		0          1.0000  0 		-47.5405
-		0          0 	 	1.0000	-37.9944
+		1.0000		0 		0 		-0.84621
+		0          1.0000  0 		 -52.171
+		0          0 	 	1.0000	-36.693
 		0          0 	 	0.0000 	 1.0000"
-		Error="1.83" Date="20170811" />
+		Error="1.83" Date="20170816" />
 		
 	
 		<Transform From="GreenLaser" To="GreenPlaneNormal"
 		Matrix="
-		1.0000		0 		0 		-0.91212
-		0          1.0000  0 		0.409545
-		0          0 	 	1.0000	0.0175235
+		1.0000		0 		0 		-0.99971486
+		0          1.0000  0 		0.011758796
+		0          0 	 	1.0000	0.020782693
 		0          0 	 	0.0000 	 0"
-		Error="1.83" Date="20170811" />
+		Error="1.83" Date="20170816" />
 	
 	
   </CoordinateDefinitions>
