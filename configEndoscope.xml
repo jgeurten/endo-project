@@ -17,7 +17,8 @@
       </DataSources>
       <OutputChannels>
         <OutputChannel Id="TrackerStream" >
-		  <DataSource Id="Laser"/>
+		  <DataSource Id="Probe"/>
+		  <DataSource Id="Model" />
 		  <DataSource Id="Camera"/>
         </OutputChannel>
       </OutputChannels>
