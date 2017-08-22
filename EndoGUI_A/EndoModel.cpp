@@ -16,6 +16,7 @@
 #include <pcl/common/centroid.h>
 #include <pcl/surface/mls.h>
 #include <pcl/point_types.h>
+#include <pcl/pcl_exports.h>
 
 //VTK Includes:
 #include <vtkCellArray.h>
@@ -174,88 +175,14 @@ void EndoModel::saveMesh(string &filename)
 	pcl::io::saveOBJFile(filename, *surfaceMesh);
 }
 
-void EndoModel::viewPointCloud(string &filename, int fileType, linalg::EndoPt camera)	//filetype 1:pcd, 2:ply
-{
-	//create instance of pcloud visualizer
-
-	boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer(new pcl::visualization::PCLVisualizer("3D Viewer"));
-	viewer->setBackgroundColor(0, 0, 0);	//black 
-
-	if (fileType < 3) {	//PLY or PCL -> view simply point cloud
-
-		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
-		
-		if (fileType == 1) {
-			if (pcl::io::loadPCDFile<pcl::PointXYZ>(filename, *cloud) == -1)	//store in pcloud ptr
-			{
-				ERROR("Unable to read file:", filename);
-				return;
-			}
-		}
-		else if (fileType == 2) {
-			if (pcl::io::loadPLYFile<pcl::PointXYZ>(filename, *cloud) == -1) {
-				ERROR("Unable to read file:", filename);
-				return;
-			}
-		}
-		else
-		{
-			ERROR("unrecognized filetype");
-			return;
-		}
-
-		viewer->addPointCloud<pcl::PointXYZ>(cloud, "sample cloud");
-		viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 5, "sample cloud");
-	}
-
-	if (fileType == 3) {		//view mesh
-		pcl::PolygonMesh mesh;
-		if (pcl::io::loadOBJFile(filename, mesh) == -1) {
-			ERROR("Unable to read file:", filename);
-			return;
-		}
-
-		viewer->addPolygonMesh(mesh, "mesh", 0);
-		//setpointcloudrendering can still be used while using add polygon mesh
-		viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY, 0.9, "mesh");	
-	}
-
-	viewer->addCoordinateSystem(1.0);// , origin.x, origin.y, origin.z);
-	viewer->initCameraParameters();
-	viewer->setCameraPosition(camera.x, camera.y, camera.z, camera.x, camera.y, camera.z );
-	while (!viewer->wasStopped())
-	{
-		viewer->spinOnce(100);
-		boost::this_thread::sleep(boost::posix_time::microseconds(100000));
-	};
-}
-
-
-void EndoModel::smoothCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr input, pcl::PointCloud<pcl::PointNormal> output)
-{
-	//function algo attempts to recreate missing parts of the surface using high order polynomials (interpolations) between surrounding data.
-	pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
-
-	pcl::MovingLeastSquares<pcl::PointXYZ, pcl::PointNormal> mls;
-	mls.setComputeNormals(true);
-	mls.setInputCloud(input);
-	mls.setPolynomialFit(true);
-	mls.setSearchMethod(tree);
-	mls.setSearchRadius(true);
-
-	mls.process(output); 
-	pcl::io::savePCDFile("cylinder.pcd", output);
-}
-
-
 
 size_t EndoModel::getCloudSize()
 {
 	return pointCloud->size();
 }
 
-void EndoModel::convertCloudToSurface()
-{
+void EndoModel::convertCloudToSurface(string &filename)
+{/*
 	//Perform normal estimation 1st
 	pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> norm;
 	pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
@@ -304,6 +231,57 @@ void EndoModel::convertCloudToSurface()
 	gp3.reconstruct(_surfaceMesh);
 	
 	*surfaceMesh = _surfaceMesh;			//populate global variable  
+
+
+	*/
+
+	pcl::PointCloud<pcl::PointXYZ>::Ptr pcloud(new pcl::PointCloud<pcl::PointXYZ>);
+	pcl::PCLPointCloud2 cloud_blob;
+	pcl::io::loadPCDFile(filename, cloud_blob);
+	pcl::fromPCLPointCloud2(cloud_blob, *pcloud);
+	//* the data should be available in pcloud
+
+	// Normal estimation*
+	pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> n;
+	pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
+	pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
+	tree->setInputCloud(pcloud);
+	n.setInputCloud(pcloud);
+	n.setSearchMethod(tree);
+	n.setKSearch(20);
+	n.compute(*normals);
+	//* normals should not contain the point normals + surface curvatures
+
+	// Concatenate the XYZ and normal fields*
+	pcl::PointCloud<pcl::PointNormal>::Ptr cloud_with_normals(new pcl::PointCloud<pcl::PointNormal>);
+	pcl::concatenateFields(*pcloud, *normals, *cloud_with_normals);
+	//* cloud_with_normals = pcloud + normals
+
+	// Create search tree*
+	pcl::search::KdTree<pcl::PointNormal>::Ptr tree2(new pcl::search::KdTree<pcl::PointNormal>);
+	tree2->setInputCloud(cloud_with_normals);
+
+	// Initialize objects
+	pcl::GreedyProjectionTriangulation<pcl::PointNormal> gp3;
+	pcl::PolygonMesh triangles;
+
+	// Set the maximum distance between connected points (maximum edge length)
+	gp3.setSearchRadius(0.025);
+
+	// Set typical values for the parameters
+	gp3.setMu(2.5);
+	gp3.setMaximumNearestNeighbors(100);
+	gp3.setMaximumSurfaceAngle(M_PI / 4); // 45 degrees
+	gp3.setMinimumAngle(M_PI / 18); // 10 degrees
+	gp3.setMaximumAngle(2 * M_PI / 3); // 120 degrees
+	gp3.setNormalConsistency(false);
+
+	// Get result
+	gp3.setInputCloud(cloud_with_normals);
+	gp3.setSearchMethod(tree2);
+	gp3.reconstruct(triangles);
+
+	pcl::io::saveOBJFile(filename, triangles);
 }
 
 void EndoModel::createVTKSurface(string &filename)

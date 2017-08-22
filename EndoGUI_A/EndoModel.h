@@ -46,7 +46,7 @@ public:
 	void saveMesh(string &filename);
 	void removeOutliers(int meanK, float SD);
 	size_t getCloudSize(); 
-	void convertCloudToSurface();
+	void convertCloudToSurface(string &filename);
 	void smoothCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr input, pcl::PointCloud<pcl::PointNormal> output);
 	static void createVTKSurface(string &filename);
 	 void createVTKPC(string filename); 

@@ -657,11 +657,10 @@ void MainWindow::scanButtonPress()
 		string filename = savePointCloud();
 		//convert to surface mesh and save, if enabled
 		if (saveAsMesh) {
-			statusBar()->showMessage(tr("Converting Point Cloud to Surface Mesh. This can take awhile."), 15000);
-//			Model->convertCloudToSurface();
+			statusBar()->showMessage(tr("Converting Point Cloud to Surface Mesh. This can take awhile."),0);
 			string st = filename.substr(0, filename.size() - 3);
 			string filenameOBJ = st + "OBJ";
-//			Model->saveMesh(filenameOBJ);
+			//Model->convertCloudToSurface(filenameOBJ);
 			statusBar()->showMessage(tr("Finished Saving Point Cloud and Mesh. Ready."), 3000);
 
 		}
@@ -670,6 +669,7 @@ void MainWindow::scanButtonPress()
 
 string MainWindow::savePointCloud()
 {
+	//function saves both as ply and pcd
 	QString filename = QFileDialog::getSaveFileName(this, "Save File", tr("./Results"), "PCD (*.pcd) ;; PLY (*.ply)");
 
 	if (filename.isEmpty()) return "";
@@ -677,12 +677,17 @@ string MainWindow::savePointCloud()
 	if (filename.endsWith(".pcd", Qt::CaseInsensitive)) {
 		qDebug() << "Save as pcd file.";
 		Model->savePointCloudAsPCD(filename.toStdString());
+		string st = filename.toStdString();
+		string filenamePly = st.substr(0, filename.size() - 3) + "PLY";
+		Model->savePointCloudAsPLY(filenamePly);
 		return filename.toStdString();
 	}
 	else if (filename.endsWith(".ply", Qt::CaseInsensitive)) {
 		qDebug() << "Save as ply file.";
 		Model->savePointCloudAsPLY(filename.toStdString());
-		//Model->createVTKPC(filename.toStdString());
+		string st = filename.toStdString();
+		string filenamePcd = st.substr(0, filename.size() - 3) + "PCD";
+		Model->savePointCloudAsPCD(filenamePcd);
 		return filename.toStdString();
 	}
 }
