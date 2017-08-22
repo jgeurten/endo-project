@@ -75,24 +75,97 @@ EndoModel::EndoModel()
 	this->surfaceMesh = _surfMesh;
 
 	this->points = vtkPoints::New();
+	pointCount = 0; 
+	ptdistance.x = 0; 
+	ptdistance.y = 0;
+	ptdistance.z = 0;
+
+	SD = 0; 
 }
 
 void EndoModel::addPointToPointCloud(linalg::EndoPt point)
 {
-	//convert EndoPt to vtk point:
-	points->InsertNextPoint(point.x, point.y, point.z); 
+	pcl::PointXYZ pt;
+	pt.x = point.x;
+	pt.y = point.y;
+	pt.z = point.z;
+	pointCloud->push_back(pt);
+	//calculate distance between current and prev point:
+	if (pointCount != 0)
+	{
+		//calculate euclidean 3D distance
+		ptdistance.x += sqrt(std::pow(prevPt.x - pt.x, 2));
+		ptdistance.y += sqrt(std::pow(prevPt.y - pt.y, 2));
+		ptdistance.x += sqrt(std::pow(prevPt.z - pt.z, 2));
+	}
+	//update count and prev point data
+	pointCount++; 
+	prevPt = pt; 
+}
+
+pcl::PointCloud<pcl::PointXYZ>::Ptr EndoModel::filterCloud()
+{
+	//calculate mean euclidean distance:
+	linalg::EndoPt mean;
+	mean.x = ptdistance.x / pointCount;
+	mean.y = ptdistance.y / pointCount;
+	mean.z = ptdistance.z / pointCount;
+
+	//calculate SD:
+	linalg::EndoPt SD;
+	SD.x = 0; 
+	SD.y = 0;
+	SD.z = 0;
+	for (int i = 0; i < pointCount; i++)
+	{
+		SD.x += std::pow(pointCloud->points[i].x -mean.x, 2);		//technically = variance at the moment
+		SD.y += std::pow(pointCloud->points[i].y -mean.y, 2);
+		SD.z += std::pow(pointCloud->points[i].z -mean.z, 2);
+	}
+
+	SD.x = sqrt(SD.x) / (pointCount - 1);	//SD form
+	SD.y = sqrt(SD.y) / (pointCount - 1);
+	SD.z = sqrt(SD.z) / (pointCount - 1);
+
+	pcl::PointCloud<pcl::PointXYZ>::Ptr filteredCloud(new pcl::PointCloud<pcl::PointXYZ>);
+	//remove outliers:
+	pcl::PointXYZ pt; 
+	for (int i = 0; i < pointCount - 1; i++)
+	{	
+		if (sqrt(std::pow(pointCloud->points[i].x - pointCloud->points[i + 1].x, 2)) < SD.x + mean.x			//if within 1 sd of mean in each direction
+			&& sqrt(std::pow(pointCloud->points[i].x - pointCloud->points[i + 1].x, 2)) > mean.x - SD.x)
+		{
+			if (sqrt(std::pow(pointCloud->points[i].y - pointCloud->points[i + 1].y, 2)) < SD.y + mean.y
+				&& sqrt(std::pow(pointCloud->points[i].y - pointCloud->points[i + 1].y, 2)) > mean.y - SD.y)
+			{
+				if (sqrt(std::pow(pointCloud->points[i].z - pointCloud->points[i + 1].z, 2)) < SD.z + mean.z
+					&& sqrt(std::pow(pointCloud->points[i].z - pointCloud->points[i + 1].z, 2)) > mean.z - SD.z)
+				{
+					pt.x = pointCloud->points[i+1].x;
+					pt.y = pointCloud->points[i+1].y;
+					pt.z = pointCloud->points[i+1].z;
+					filteredCloud->push_back(pt);
+				}
+			}
+		}
+	}
+	return filteredCloud;
 }
 
 void EndoModel::savePointCloudAsPLY(string &filename)
 {
 	if (pointCloud->size() == 0) return;
-	pcl::io::savePLYFileASCII(filename, *pointCloud);
+	pcl::PointCloud<pcl::PointXYZ>::Ptr filteredCloud;
+	filteredCloud = filterCloud();
+	pcl::io::savePLYFileASCII(filename, *filteredCloud);
 }
 
 void EndoModel::savePointCloudAsPCD(string &filename)
 {
 	if (pointCloud->size() == 0) return;
-	pcl::io::savePCDFileASCII(filename, *pointCloud);
+	pcl::PointCloud<pcl::PointXYZ>::Ptr filteredCloud;
+	filteredCloud = filterCloud();
+	pcl::io::savePCDFileASCII(filename, *filteredCloud);
 }
 
 void EndoModel::saveMesh(string &filename)
@@ -157,34 +230,6 @@ void EndoModel::viewPointCloud(string &filename, int fileType, linalg::EndoPt ca
 	};
 }
 
-void EndoModel::removeOutliers(int meanK, float SD)
-{
-	//filters the this->Pointcloud and returns filtered cloud.
-	//Called between ending a scan and saving PC as ply or pcd.
-	pcl::PointCloud<pcl::PointXYZ>::Ptr filtCloud(new pcl::PointCloud<pcl::PointXYZ>);
-	pcl::PointCloud<pcl::PointXYZ>::Ptr downSampCld(new pcl::PointCloud<pcl::PointXYZ>);
-
-	//create stat outlier removal object. NN to analyze = meanK.Points with > SD of the mean distance
-	//of the query point will be marked = outlier. 
-	pcl::StatisticalOutlierRemoval<pcl::PointXYZ> remover;
-	remover.setInputCloud(pointCloud);
-	remover.setMeanK(meanK);
-	remover.setStddevMulThresh(SD);
-	remover.filter(*filtCloud);
-
-	//Apply downsampling point cloud using voxel grid filter. 
-	//Approach: define voxel dimensions in world coordinates. Per voxel, will estimate the 
-	//centroid which will be the only point kept.
-	pcl::VoxelGrid<pcl::PointXYZ> sampler;
-	sampler.setInputCloud(filtCloud);
-	sampler.setLeafSize(3.0f, 3.0f, 3.0f);	//parameters are in 
-	sampler.filter(*downSampCld);
-
-	//outliers are removed Cloud has been approximated.
-	pcl::PointCloud<pcl::PointNormal> out;
-	//smoothCloud(downSampCld, out);
-	pointCloud = downSampCld;
-}
 
 void EndoModel::smoothCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr input, pcl::PointCloud<pcl::PointNormal> output)
 {

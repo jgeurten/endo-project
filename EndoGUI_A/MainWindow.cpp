@@ -508,6 +508,10 @@ void MainWindow::createVTKObject()
 	intrinsicsMat->SetElement(2, 0, 0);
 	intrinsicsMat->SetElement(2, 1, 0);
 	intrinsicsMat->SetElement(2, 2, 1);
+
+	vtkMatrix3x3::Invert(intrinsicsMat, invA);
+
+
 }
 
 void MainWindow::camera_button_clicked()
@@ -556,7 +560,6 @@ void MainWindow::update_image()
 
 		capture >> distStreamImg;
 		cv::remap(distStreamImg, streamImg, map1, map2, cv::INTER_CUBIC);
-		cv::imshow("stream", streamImg);
 		cv::Size s = streamImg.size();
 		image = QImage((const unsigned char*)(streamImg.data), streamImg.cols, streamImg.rows, streamImg.cols*streamImg.channels(), QImage::Format_RGB888).rgbSwapped();
 
@@ -612,17 +615,27 @@ void MainWindow::scanButtonPress()
 
 		//Results file header:
 		ResultsFile << "Cam X," << "Cam Y," << "Cam Z,"
-			<< "Pixel X," << "Pixel Y," << "Pixel Z,"
+			<< "VecProj X," << "VecProj Y," << "VecProj Z,"
 			<< "Plane Normal X," << "Plane Normal Y," << "Plane Normal Z,"
 			<< "Laser Origin X," << "Laser Origin Y," << "Laser Origin Z,"
+			<< "Plane A," << "B," << "C," << "D,"
 			<< "CamLine.A.X," << "CamLine.A.Y," << "CamLine.A.Z,"
 			<< "CamLine.B.X," << "CamLine.B.Y," << "CamLine.B.Z,"
-			<< "U," << "V," << "Calc U," << "Calc V,"
-			<< "Intersection X," << "Y," << "Z" << endl;
+			<< "U," << "V," //<< "Calc U," << "Calc V,"
+			<< "Intersection X," << "Y," << "Z,"  
+			<< "Laser Trans R11," << "R12," << "R13," << "T1," 
+			<< "R21," << "R22," << "R23," << "T2,"
+			<< "R31," << "R32," << "R33," << "T3,"
+			<< "R41," << "R42," << "R43," << "T4,"
+			<< "Camera Trans R11," << "R12," << "R13," << "T1,"
+			<< "R21," << "R22," << "R23," << "T2,"
+			<< "R31," << "R32," << "R33," << "T3,"
+			<< "R41," << "R42," << "R43," << "T4" << endl;
 
 
 	}
-	else {
+	else		//finish scan:
+	{
 		trackerControl->scanButton->setText(tr("Start Scan"));
 		trackerControl->scanButton->setChecked(false);
 		scanTimer->stop();
@@ -640,7 +653,7 @@ void MainWindow::scanButtonPress()
 		statusBar()->showMessage(tr("Filtering Point Cloud. Please wait."), 8000);
 		//Want to see raw PC
 		Model->removeOutliers(meanNN, StdDev);	//updates pointcloud to point to a filtered pt cloud
-*/
+*/		statusBar()->showMessage(tr("Saving Point Cloud. Please Wait."), 0);
 		string filename = savePointCloud();
 		//convert to surface mesh and save, if enabled
 		if (saveAsMesh) {
@@ -668,8 +681,8 @@ string MainWindow::savePointCloud()
 	}
 	else if (filename.endsWith(".ply", Qt::CaseInsensitive)) {
 		qDebug() << "Save as ply file.";
-		//Model->savePointCloudAsPLY(filename.toStdString());
-		Model->createVTKPC(filename.toStdString());
+		Model->savePointCloudAsPLY(filename.toStdString());
+		//Model->createVTKPC(filename.toStdString());
 		return filename.toStdString();
 	}
 }
@@ -700,8 +713,7 @@ void MainWindow::scan()
 
 		cv::remap(distlaserOnImg, laserOnImg, map1, map2, cv::INTER_CUBIC);
 		cv::remap(distlaserOffImg, laserOffImg, map1, map2, cv::INTER_CUBIC);
-		cv::imshow("ON", laserOnImg);
-		cv::imshow("OFF", laserOffImg);
+		
 		framePointsToCloud(laserOffImg, laserOnImg, 2);// , model);
 	}
 }
@@ -765,10 +777,13 @@ void MainWindow::updateTracker()
 		trackerChannel->GetTrackedFrame(trackedFrame);
 		repository->SetTransforms(trackedFrame);
 
-		bool isToolMatrixValid = false;
+		
 		bool isCameraMatrixValid = false;
-
+		bool isToolMatrixValid = false;
 		//Camera transforms first
+		
+
+
 		if (repository->GetTransform(camera2TrackerName, camera2Tracker, &isCameraMatrixValid) == PLUS_SUCCESS && isCameraMatrixValid)
 			trackerControl->lightWidgets[0]->setGreen();
 
@@ -799,6 +814,8 @@ void MainWindow::updateTracker()
 
 		if (usingGreenLaser)
 		{
+			bool isToolMatrixValid = false;
+
 			if (repository->GetTransform(gLaser2TrackerName, gLaser2Tracker, &isToolMatrixValid) == PLUS_SUCCESS && isToolMatrixValid)
 				trackerControl->lightWidgets[1]->setGreen();
 			else
@@ -839,40 +856,69 @@ void MainWindow::updateTracker()
 	}
 }
 
-void MainWindow::getProjectionPosition()
+linalg::EndoPt MainWindow::getCameraPosition()
 {
-	camera.x = imagePlane2Tracker->GetElement(0, 3);		// get x,y,z of implane2camera*camera2tracker
-	camera.y = imagePlane2Tracker->GetElement(1, 3);
-	camera.z = imagePlane2Tracker->GetElement(2, 3);
+	linalg::EndoPt camera;
+	camera.x = camera2Tracker->GetElement(0, 3);		// camera w.r.t. tracker. Forms the origin of the line to pixel
+	camera.y = camera2Tracker->GetElement(1, 3);
+	camera.z = camera2Tracker->GetElement(2, 3);
+	return camera;
 
 }
 
-void MainWindow::getNormalPosition()
+linalg::EndoPt MainWindow::getNormalPosition()
 {
-	normal.x = rNormal2Tracker->GetElement(0, 3);
-	normal.y = rNormal2Tracker->GetElement(1, 3);
-	normal.z = rNormal2Tracker->GetElement(2, 3);
+	linalg::EndoPt normal, unitNorm; 
+
+	//Get normals components:
+	normal.x = rNormal2Tracker->GetElement(0, 0);
+	normal.y = rNormal2Tracker->GetElement(1, 0);
+	normal.z = rNormal2Tracker->GetElement(2, 0);
+
+	//Normalize vector
+	double norm = sqrt(normal.x*normal.x + normal.y*normal.y + normal.z*normal.z);
+	unitNorm.x = normal.x / norm; 
+	unitNorm.y = normal.y / norm;
+	unitNorm.z = normal.z / norm;
+
+	return unitNorm;
+
 }
 
-void MainWindow::getOriginPosition()
+linalg::EndoPt MainWindow::getOriginPosition()
 {
+	linalg::EndoPt origin; 
 	origin.x = rOrigin2Tracker->GetElement(0, 3);
 	origin.y = rOrigin2Tracker->GetElement(1, 3);
 	origin.z = rOrigin2Tracker->GetElement(2, 3);
+
+	return origin;
 }
 
-void MainWindow::getGreenNormalPosition()
+linalg::EndoPt MainWindow::getGreenNormalPosition()
 {
-	normal.x = gNormal2Tracker->GetElement(0, 3);
-	normal.y = gNormal2Tracker->GetElement(1, 3);
-	normal.z = gNormal2Tracker->GetElement(2, 3);
+	linalg::EndoPt normal, unitNorm;
+	normal.x = gNormal2Tracker->GetElement(0, 0);
+	normal.y = gNormal2Tracker->GetElement(1, 0);
+	normal.z = gNormal2Tracker->GetElement(2, 0);
+
+	double norm = sqrt(normal.x*normal.x + normal.y*normal.y + normal.z*normal.z);
+	unitNorm.x = normal.x / norm;
+	unitNorm.y = normal.y / norm;
+	unitNorm.z = normal.z / norm;
+
+	return unitNorm;
 }
 
-void MainWindow::getGreenOriginPosition()
+linalg::EndoPt MainWindow::getGreenOriginPosition()
 {
+	linalg::EndoPt origin;
+
 	origin.x = gOrigin2Tracker->GetElement(0, 3);
 	origin.y = gOrigin2Tracker->GetElement(1, 3);
 	origin.z = gOrigin2Tracker->GetElement(2, 3);
+
+	return origin; 
 }
 
 
@@ -1289,24 +1335,21 @@ cv::Mat MainWindow::subtractLaser(cv::Mat &laserOff, cv::Mat &laserOn)
 	return lineImg;
 }
 
-cv::Mat MainWindow::subImAlgo(cv::Mat &laserOff, cv::Mat &laserOn)
+cv::Mat MainWindow::subImAlgo(cv::Mat &laserOff, cv::Mat &laserOn, int laserColor)
 {
-	cv::imshow("On", laserOn);
-	cv::imshow("OFF", laserOff);
+	
 	//Define local cv"mats
 	cv::Mat subImg, bgr[3], filteredRed, threshImg, greyMat, convImg;
 	//subtract laser on and off matricies to get the laser
 	cv::subtract(laserOn, laserOff, subImg);
 
-	cv::imshow("subtract", subImg);
 	//split subtracted image into red channel
 	cv::split(subImg, bgr);
 
 	//use median blur to eliminate noise in background
-	cv::medianBlur(bgr[1], filteredRed, 9);
+	cv::medianBlur(bgr[laserColor], filteredRed, 9);
 
 
-	cv::imshow("filtered red", filteredRed);
 	//Perform convolution using formula from conv2 matlab
 	int const gsize = 30;
 
@@ -1331,8 +1374,6 @@ cv::Mat MainWindow::subImAlgo(cv::Mat &laserOff, cv::Mat &laserOn)
 
 	//threshold image: if > 10 
 	cv::threshold(filteredRed, threshImg, 10, 255, CV_THRESH_TOZERO);
-	cv::imshow("Thresh", threshImg);
-
 	return threshImg;
 }
 
@@ -1357,7 +1398,7 @@ void MainWindow::framePointsToCloud(cv::Mat &laserOn, cv::Mat &laserOff, int res
 {
 	//check if able to transform all entities into tracker space
 	
-	if (!trackReady)
+if (!trackReady)
 	{
 		LOG_ERROR("Unable to transform one or many translations");
 		return;
@@ -1366,21 +1407,26 @@ void MainWindow::framePointsToCloud(cv::Mat &laserOn, cv::Mat &laserOff, int res
 	if (paused) return;
 
 	//get camera centre 
-	getProjectionPosition();	//updates camera coords
+	linalg::EndoPt camera = getCameraPosition();	//updates camera coords
 
+	linalg::EndoPt vectorProj, calcPixel, origin, normal;
+
+	int colorCode;
 								//laser plane geometry
 	if (usingRedLaser) {
-		getNormalPosition();		//updates normal
-		getOriginPosition();		//updates origin
+		normal = getNormalPosition();		//updates normal
+		origin = getOriginPosition();		//updates origin
+		colorCode = 2; 
 	}
 
 	else {
-		getGreenNormalPosition();		//updates normal
-		getGreenOriginPosition();		//updates origin
+		normal = getGreenNormalPosition();		//updates normal
+		origin = getGreenOriginPosition();		//updates origin
+		colorCode = 1;
 	}
 
-	linalg::EndoPt pixel, calcPixel;
-	cv::Mat laserLineImg = subImAlgo(laserOff, laserOn);
+	
+	cv::Mat laserLineImg = subImAlgo(laserOff, laserOn, colorCode);
 
 	int maxIndicies[480] = {};	//initialize as all 0's in order to access laserLineImg.at<uchar>
 
@@ -1409,8 +1455,9 @@ void MainWindow::framePointsToCloud(cv::Mat &laserOn, cv::Mat &laserOff, int res
 	{
 		if (maxIndicies[row] > 0)															//if max value is located at column = 0, laser line not detected for that row. 
 		{
-			pixel = getPixelPosition(row, maxIndicies[row]);														//returns pixel 2 world coords
-			linalg::EndoLine camLine = linalg::lineFromPoints(camera, pixel);						//in world coordinates
+			vectorProj = getPixelDirection(row, maxIndicies[row]);														//returns pixel 2 world coords
+			linalg::EndoLine camLine = linalg::linePtVector(camera, vectorProj);						//in world coordinates
+			linalg::EndoPlane plane = linalg::MakePlane(normal, origin);
 			linalg::EndoPt intersection = linalg::solveIntersection(normal, origin, camLine);		//in world coordinates
 
 			if (intersection.x == 0.0)
@@ -1420,35 +1467,47 @@ void MainWindow::framePointsToCloud(cv::Mat &laserOn, cv::Mat &laserOff, int res
 			}
 			else
 			{
-				calcPixel = validatePixel(intersection);
-				Model->addPointToPointCloud(intersection);
+				//calcPixel = validatePixel(intersection);
+				Model->addPointToPointCloud(intersection);				//change after testing
 
 				if (saveDataBool)
-					saveData(camera, pixel, normal, origin, camLine, maxIndicies[row], row, calcPixel, intersection);
+					saveData(camera, vectorProj, normal, origin, plane, camLine, maxIndicies[row], row,  intersection);
+
+					//saveData(camera, vectorProj, normal, origin, camLine, maxIndicies[row], row, calcPixel, intersection);
 			}
 		}
 	}
 }
 
-linalg::EndoPt MainWindow::getPixelPosition(int row, int col)		//returns pixel location in tracker space
+linalg::EndoPt MainWindow::getPixelDirection(int row, int col)		//returns pixel location in tracker space
 {
-	linalg::EndoPt result;
-	double plane2World[4];	//image plane 2 world not laser plane 2 world
-	double plane2FeaturePoint[4] = { col - 3.18246521e+002, row - 2.36307892e+002, 6.21962708e+002, 1 }; //homogenous transform from config file
-	imagePlane2Tracker->MultiplyPoint(plane2FeaturePoint, plane2World);
-	//Now have featurePoint 2 world: divide by 4th element in plane2World
+	linalg::EndoPt direction;
+	double pixelPrime[3], normPrime[4], result[4]; 
+	double pixel[3] = { col, row, 1.00 };
+	invA->MultiplyPoint(pixel, pixelPrime);
 
-	result.x = plane2World[0] / plane2World[3];
-	result.y = plane2World[1] / plane2World[3];
-	result.z = plane2World[2] / plane2World[3];
-	return result;
+	//normalize and append 0 (for vectors):
+	double length = sqrt(pixelPrime[0]* pixelPrime[0] + pixelPrime[1] * pixelPrime[1] + pixelPrime[2] * pixelPrime[2]);
+	
+	for (int i = 0; i < 3; i++)
+		normPrime[i] = pixelPrime[i] / length; 
+	normPrime[3] = 0; 
+
+	//convert vector direction into world coordinate system
+	camera2Tracker->MultiplyPoint(normPrime, result);
+
+	//Copy result to EndoPt data type for handling in linalg::linePtVector
+	direction.x = result[0];
+	direction.y = result[1];
+	direction.z = result[2];
+	return direction; 
 }
 
 linalg::EndoPt MainWindow::validatePixel(linalg::EndoPt point)
 {
 	double plane2FeaturePt[4], normPlane2Feat[3], world2Feat[3];
 	linalg::EndoPt result;
-	double pointVector[4] = { point.x, point.y, point.z, 1 };		//unclear if last value = 1 or 0
+	double pointVector[4] = { point.x, point.y, point.z, 1 };		//point append 1
 	tracker2ImagePlane->MultiplyPoint(pointVector, plane2FeaturePt);
 	normPlane2Feat[0] = plane2FeaturePt[0] / plane2FeaturePt[3];
 	normPlane2Feat[1] = plane2FeaturePt[1] / plane2FeaturePt[3];
@@ -1479,8 +1538,8 @@ void MainWindow::about()
 }
 
 
-void MainWindow::saveData(linalg::EndoPt cameraPt, linalg::EndoPt pixelPt, linalg::EndoPt normalPt, linalg::EndoPt originPt, linalg::EndoLine cameraline,
-	int col, int row, linalg::EndoPt calcPixel, linalg::EndoPt inter)
+void MainWindow::saveData(linalg::EndoPt cameraPt, linalg::EndoPt pixelPt, linalg::EndoPt normalPt, linalg::EndoPt originPt,linalg::EndoPlane plane, linalg::EndoLine cameraline,
+	int col, int row,  linalg::EndoPt inter)
 {
 
 	//CAM:
@@ -1503,6 +1562,12 @@ void MainWindow::saveData(linalg::EndoPt cameraPt, linalg::EndoPt pixelPt, linal
 	ResultsFile << originPt.y << ",";
 	ResultsFile << originPt.z << ",";
 
+	//Plane:
+	ResultsFile << plane.a << ",";
+	ResultsFile << plane.b << ",";
+	ResultsFile << plane.c << ",";
+	ResultsFile << plane.d << ",";
+
 	//Camera Line:
 	ResultsFile << cameraline.a.x << ",";
 	ResultsFile << cameraline.a.y << ",";
@@ -1516,14 +1581,30 @@ void MainWindow::saveData(linalg::EndoPt cameraPt, linalg::EndoPt pixelPt, linal
 	ResultsFile << col << ",";
 	ResultsFile << row << ",";
 
-	//Calculated U and V:
-	ResultsFile << calcPixel.x << ",";
-	ResultsFile << calcPixel.y << ",";
-
+	
 	//intersection:
 	ResultsFile << inter.x << ",";
 	ResultsFile << inter.y << ",";
-	ResultsFile << inter.z << endl;
+	ResultsFile << inter.z << ",";
+
+	//Laser to tracker transform
+	for (int i = 0; i < 4; i++)
+	{
+		for (int j = 0; j < 4; j++)
+		{
+			ResultsFile << rLaser2Tracker->GetElement(i,j) << ",";
+		}
+	}
+	
+	//Camera to tracker transform
+	for (int i = 0; i < 4; i++)
+	{
+		for (int j = 0; j < 4; j++)
+		{
+			ResultsFile << camera2Tracker->GetElement(i, j) << ",";
+		}
+	}
+	ResultsFile << endl;
 }
 
 void MainWindow::contrastChanged(int sliderPos)

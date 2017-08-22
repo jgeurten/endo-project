@@ -37,6 +37,9 @@ SET(${PROJECT_NAME}_HDRS
   ScanClass.h
   MCUControlWidget.h
   WebcamControlWidget.h
+  matrixUtil.h
+  matrix.h
+  imageUtil.h
   #SerialComPort.h
   )
 

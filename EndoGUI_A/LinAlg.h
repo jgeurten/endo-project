@@ -90,7 +90,13 @@ namespace linalg
 		return (p1.x*p2.x + p1.y*p2.y + p1.z*p2.z);
 	}
 
-
+	static EndoLine linePtVector(EndoPt p1, EndoPt p2)	//pass in point and vector, respectively
+	{
+		EndoPt unitVec;
+		unitVec = unitVector(p2);
+		EndoLine line = MakeLine(p1, unitVec);
+		return line;
+	}
 
 	static EndoPt solveIntersection(EndoPt normal, EndoPt origin, EndoLine camLine)
 	{

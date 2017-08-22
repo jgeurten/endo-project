@@ -179,7 +179,10 @@ private:
 	vtkSmartPointer<vtkMatrix4x4>					pixel2Tracker = vtkSmartPointer<vtkMatrix4x4>::New();
 	vtkSmartPointer<vtkMatrix4x4>					tracker2Pixel = vtkSmartPointer<vtkMatrix4x4>::New();
 
+	vtkSmartPointer<vtkMatrix4x4>					HMD2Tracker = vtkSmartPointer<vtkMatrix4x4>::New();
+
 	vtkSmartPointer<vtkMatrix3x3>					intrinsicsMat = vtkSmartPointer<vtkMatrix3x3>::New();
+	vtkSmartPointer<vtkMatrix3x3>					invA = vtkSmartPointer<vtkMatrix3x3>::New();
 
 
 	vtkTransform									*point2Tracker = vtkTransform::New();
@@ -203,6 +206,7 @@ private:
 	PlusTransformName								gOrigin2TrackerName = PlusTransformName("GreenPlaneOrigin", "Tracker");
 	PlusTransformName								gNormal2LaserName = PlusTransformName("PlaneNormal", "GreenLaser");
 	PlusTransformName								gNormal2TrackerName = PlusTransformName("GreenPlaneNormal", "Tracker");
+	PlusTransformName								HMD2TrackerName = PlusTransformName("HMD", "Tracker");
 
 	
 
@@ -258,9 +262,6 @@ private:
 	
 	ofstream			ResultsFile;
 	
-	linalg::EndoPt camera, normal, origin;
-
-
 	private slots:
 
 	void toggleLaser();
@@ -280,15 +281,15 @@ private:
 	void saveDataClicked(bool);
 	void updateTracker();
 	string savePointCloud();
-	void saveData(linalg::EndoPt camera, linalg::EndoPt pixel, linalg::EndoPt normal, linalg::EndoPt origin, linalg::EndoLine camLine,
-		int col, int row, linalg::EndoPt calcPixel, linalg::EndoPt inter);
+	void saveData(linalg::EndoPt camera, linalg::EndoPt pixel, linalg::EndoPt normal, linalg::EndoPt origin, linalg::EndoPlane plane, linalg::EndoLine camLine,
+		int col, int row,  linalg::EndoPt inter);
 	void update_image();
 	void saveVideo();
 	void help();
 	void about();
 	void framePointsToCloud(cv::Mat &laserOff, cv::Mat &laserOn, int res);//, EndoModel* model);
 	cv::Mat subtractLaser(cv::Mat &laserOff, cv::Mat &laserOn);
-	cv::Mat subImAlgo(cv::Mat &laserOff, cv::Mat &laserOn);
+	cv::Mat subImAlgo(cv::Mat &laserOff, cv::Mat &laserOn, int laserColor);
 	vector<cv::Vec4i> detectLaserLine(cv::Mat &laserOff, cv::Mat &laserOn);
 	void contrastChanged(int sliderPos);
 	void brightnessChanged(int sliderPos);
@@ -296,13 +297,12 @@ private:
 	linalg::EndoPt validatePixel(linalg::EndoPt point);
 
 public:
-	void getProjectionPosition();
-
-	void getNormalPosition();
-	void getOriginPosition();
-	void getGreenNormalPosition();		//updates normal
-	void getGreenOriginPosition();
-	linalg::EndoPt getPixelPosition(int row, int col);
+	linalg::EndoPt getCameraPosition();
+	linalg::EndoPt getNormalPosition();
+	linalg::EndoPt getOriginPosition();
+	linalg::EndoPt getGreenNormalPosition();		//updates normal
+	linalg::EndoPt getGreenOriginPosition();
+	linalg::EndoPt getPixelDirection(int row, int col);
 	void arduinoScanPress(); 
 	void arduinoPausePress();
 

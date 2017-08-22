@@ -36,6 +36,7 @@ public:
 	pcl::PointCloud<pcl::PointXYZ>::Ptr pointCloud;
 	pcl::PolygonMesh::Ptr surfaceMesh; 
 	vtkPoints* points; 
+	pcl::PointXYZ prevPt; 
 
 	EndoModel();
 	void addPointToPointCloud(linalg::EndoPt point);
@@ -49,6 +50,10 @@ public:
 	void smoothCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr input, pcl::PointCloud<pcl::PointNormal> output);
 	static void createVTKSurface(string &filename);
 	 void createVTKPC(string filename); 
+	 float pointCount; 
+	 double SD; 
+	 linalg::EndoPt ptdistance; 
+	 pcl::PointCloud<pcl::PointXYZ>::Ptr filterCloud();
 //Static functions:	
 	static void viewPointCloud(string &filename, int fileType, linalg::EndoPt camera);
 };
