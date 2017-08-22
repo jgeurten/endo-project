@@ -511,7 +511,39 @@ void MainWindow::createVTKObject()
 
 	vtkMatrix3x3::Invert(intrinsicsMat, invA);
 
+	laser2Normal->SetElement(0, 0, -0.9998151);
+	laser2Normal->SetElement(0, 1, 0);
+	laser2Normal->SetElement(0, 2, 0);
+	laser2Normal->SetElement(0, 3, 0);
+	laser2Normal->SetElement(1, 0, 0.00514673);
+	laser2Normal->SetElement(1, 1, 1);
+	laser2Normal->SetElement(1, 2, 0);
+	laser2Normal->SetElement(1, 3, 0);
+	laser2Normal->SetElement(2, 0, 0.01852691);
+	laser2Normal->SetElement(2, 1, 0);
+	laser2Normal->SetElement(2, 2, 1);
+	laser2Normal->SetElement(2, 3, 0);
+	laser2Normal->SetElement(3, 0, 0);
+	laser2Normal->SetElement(3, 1, 0);
+	laser2Normal->SetElement(3, 2, 0);
+	laser2Normal->SetElement(3, 3, 1);
 
+	laser2Origin->SetElement(0, 0, 1);
+	laser2Origin->SetElement(0, 1, 0);
+	laser2Origin->SetElement(0, 2, 0);
+	laser2Origin->SetElement(0, 3, -0.9316);
+	laser2Origin->SetElement(1, 0, 0);
+	laser2Origin->SetElement(1, 1, 1);
+	laser2Origin->SetElement(1, 2, 0);
+	laser2Origin->SetElement(1, 3, -42.8642);
+	laser2Origin->SetElement(2, 0, 0);
+	laser2Origin->SetElement(2, 1, 0);
+	laser2Origin->SetElement(2, 2, 1);
+	laser2Origin->SetElement(2, 3, -28.1282);
+	laser2Origin->SetElement(3, 0, 0);
+	laser2Origin->SetElement(3, 1, 0);
+	laser2Origin->SetElement(3, 2, 0);
+	laser2Origin->SetElement(3, 3, 1);
 }
 
 void MainWindow::camera_button_clicked()
@@ -874,11 +906,13 @@ linalg::EndoPt MainWindow::getCameraPosition()
 linalg::EndoPt MainWindow::getNormalPosition()
 {
 	linalg::EndoPt normal, unitNorm; 
+	// 
+	// //Get normals components:
+	// normal.x = rNormal2Tracker->GetElement(0, 0);
+	// normal.y = rNormal2Tracker->GetElement(1, 0);
+	// normal.z = rNormal2Tracker->GetElement(2, 0);
+	// 
 
-	//Get normals components:
-	normal.x = rNormal2Tracker->GetElement(0, 0);
-	normal.y = rNormal2Tracker->GetElement(1, 0);
-	normal.z = rNormal2Tracker->GetElement(2, 0);
 
 	//Normalize vector
 	double norm = sqrt(normal.x*normal.x + normal.y*normal.y + normal.z*normal.z);
@@ -1370,14 +1404,12 @@ cv::Mat MainWindow::subImAlgo(cv::Mat &laserOff, cv::Mat &laserOn, int laserColo
 		gaussDist.at<float>(0, i) = (exp(-1 * (linspace[i] ^ 2) / 2 * sigma ^ 2)) / sumGaussfilt;
 	}
 
-	
 	//Matrix<double> h(1, 30);
 
 	cv::GaussianBlur(filteredRed, convImg, cv::Size(29, 29), (double)sigma, 0, 4);
 	//filter2D(filteredRed, convImg, -1, gaussDist, cv::Point(-1, -1), 0, 0);
 
-
-	//threshold image: if > 10 
+	//threshold image: if > 10, otherwise, possibly noise
 	cv::threshold(filteredRed, threshImg, 10, 255, CV_THRESH_TOZERO);
 	return threshImg;
 }
@@ -1403,14 +1435,14 @@ void MainWindow::framePointsToCloud(cv::Mat &laserOn, cv::Mat &laserOff, int res
 {
 	//check if able to transform all entities into tracker space
 	
-if (!trackReady)
+	if (!trackReady)
 	{
 		LOG_ERROR("Unable to transform one or many translations");
 		return;
 	}
 
 	if (paused) return;
-
+	updateTracker();
 	//get camera centre 
 	linalg::EndoPt camera = getCameraPosition();	//updates camera coords
 
