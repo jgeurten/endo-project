@@ -185,7 +185,10 @@ private:
 	vtkSmartPointer<vtkMatrix3x3>					invA = vtkSmartPointer<vtkMatrix3x3>::New();
 
 	vtkSmartPointer<vtkMatrix4x4>					laser2Normal = vtkSmartPointer<vtkMatrix4x4>::New();
+	vtkSmartPointer<vtkMatrix4x4>					normal2Laser = vtkSmartPointer<vtkMatrix4x4>::New();
+
 	vtkSmartPointer<vtkMatrix4x4>					laser2Origin = vtkSmartPointer<vtkMatrix4x4>::New();
+	vtkSmartPointer<vtkMatrix4x4>					origin2Laser = vtkSmartPointer<vtkMatrix4x4>::New();
 
 
 	vtkTransform									*point2Tracker = vtkTransform::New();

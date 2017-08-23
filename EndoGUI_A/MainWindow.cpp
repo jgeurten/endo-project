@@ -144,9 +144,15 @@ MainWindow::MainWindow(QWidget *parent)
 	setWindowTitle(tr("Endo Scanner"));
 	size = this->size;
 
-	//Parameters from ./config/LogitechC920_Distortion(or Intrinsics)3.xml
-	intrinsics = (cv::Mat1d(3, 3) << 6.21962708e+002, 0, 3.18246521e+002, 0, 6.19908875e+002, 2.36307892e+002, 0, 0, 1);
-	distortion = (cv::Mat1d(1, 4) << 8.99827331e-002, -2.04057172e-001, -3.27174924e-003, -2.31121108e-003);
+	////Parameters from ./config/LogitechC920_Distortion(or Intrinsics)3.xml
+	//intrinsics = (cv::Mat1d(3, 3) << 1.6676388e+03, 0, 1.172495287e+03, 0, 1.66362177e+03, 6.38079903e+02, 0, 0, 1);
+	//distortion = (cv::Mat1d(1, 4) << 6.8932389700580091e-02, 1.7232721105351856e-01, -3.7101608187164112e-03, 4.9653539798082211e-03);// , -2.5076577085136855e+00);
+	////distortion = (cv::Mat1d(1, 4) << 8.99827331e-002, -2.04057172e-001, -3.27174924e-003, -2.31121108e-003);
+
+	intrinsics = (cv::Mat1d(3, 3) << 609.710537, 0, 303.200522, 0, 606.011374, 258.905227, 0, 0, 1);
+	distortion = (cv::Mat1d(1, 4) << 0.084930, -0.153198, 0.011283, -0.000882);// , -2.5076577085136855e+00); 
+
+
 }
 
 //destructor
@@ -498,13 +504,25 @@ void MainWindow::createVTKObject()
 		cout << "Configuration incorrect for vtkPlusDataCollector." << endl;
 		return;
 	}
-
+	//Old calibration:
+	/*
 	intrinsicsMat->SetElement(0, 0, 6.21962708e+002);
 	intrinsicsMat->SetElement(0, 1, 0);
 	intrinsicsMat->SetElement(0, 2, 3.18246521e+002);
 	intrinsicsMat->SetElement(1, 0, 0);
 	intrinsicsMat->SetElement(1, 1, 6.19908875e+002);
 	intrinsicsMat->SetElement(1, 2, 2.36307892e+002);
+	intrinsicsMat->SetElement(2, 0, 0);
+	intrinsicsMat->SetElement(2, 1, 0);
+	intrinsicsMat->SetElement(2, 2, 1);
+	*/
+	//New calibration:
+	intrinsicsMat->SetElement(0, 0, 609.710537);
+	intrinsicsMat->SetElement(0, 1, 0);
+	intrinsicsMat->SetElement(0, 2, 303.200522);
+	intrinsicsMat->SetElement(1, 0, 0);
+	intrinsicsMat->SetElement(1, 1, 606.011374);
+	intrinsicsMat->SetElement(1, 2, 258.905227);
 	intrinsicsMat->SetElement(2, 0, 0);
 	intrinsicsMat->SetElement(2, 1, 0);
 	intrinsicsMat->SetElement(2, 2, 1);
@@ -528,6 +546,9 @@ void MainWindow::createVTKObject()
 	laser2Normal->SetElement(3, 2, 0);
 	laser2Normal->SetElement(3, 3, 1);
 
+	//No need to invert
+	//vtkMatrix4x4::Invert(laser2Normal, normal2Laser);
+
 	laser2Origin->SetElement(0, 0, 1);
 	laser2Origin->SetElement(0, 1, 0);
 	laser2Origin->SetElement(0, 2, 0);
@@ -544,6 +565,8 @@ void MainWindow::createVTKObject()
 	laser2Origin->SetElement(3, 1, 0);
 	laser2Origin->SetElement(3, 2, 0);
 	laser2Origin->SetElement(3, 3, 1);
+
+	vtkMatrix4x4::Invert(laser2Origin, origin2Laser);
 }
 
 void MainWindow::camera_button_clicked()
@@ -654,8 +677,8 @@ void MainWindow::scanButtonPress()
 			<< "CamLine.A.X," << "CamLine.A.Y," << "CamLine.A.Z,"
 			<< "CamLine.B.X," << "CamLine.B.Y," << "CamLine.B.Z,"
 			<< "U," << "V," //<< "Calc U," << "Calc V,"
-			<< "Intersection X," << "Y," << "Z,"  
-			<< "Laser Trans R11," << "R12," << "R13," << "T1," 
+			<< "Intersection X," << "Y," << "Z,"
+			<< "Laser Trans R11," << "R12," << "R13," << "T1,"
 			<< "R21," << "R22," << "R23," << "T2,"
 			<< "R31," << "R32," << "R33," << "T3,"
 			<< "R41," << "R42," << "R43," << "T4,"
@@ -679,17 +702,17 @@ void MainWindow::scanButtonPress()
 		isScanning = false;
 		ResultsFile.close();
 
-/*		//Remove outliers and down sample point cloud before saving
-		int meanNN = 150;
-		float StdDev = 0.9;
-		statusBar()->showMessage(tr("Filtering Point Cloud. Please wait."), 8000);
-		//Want to see raw PC
-		Model->removeOutliers(meanNN, StdDev);	//updates pointcloud to point to a filtered pt cloud
-*/		statusBar()->showMessage(tr("Saving Point Cloud. Please Wait."), 0);
+		/*		//Remove outliers and down sample point cloud before saving
+				int meanNN = 150;
+				float StdDev = 0.9;
+				statusBar()->showMessage(tr("Filtering Point Cloud. Please wait."), 8000);
+				//Want to see raw PC
+				Model->removeOutliers(meanNN, StdDev);	//updates pointcloud to point to a filtered pt cloud
+		*/		statusBar()->showMessage(tr("Saving Point Cloud. Please Wait."), 0);
 		string filename = savePointCloud();
 		//convert to surface mesh and save, if enabled
 		if (saveAsMesh) {
-			statusBar()->showMessage(tr("Converting Point Cloud to Surface Mesh. This can take awhile."),0);
+			statusBar()->showMessage(tr("Converting Point Cloud to Surface Mesh. This can take awhile."), 0);
 			string st = filename.substr(0, filename.size() - 3);
 			string filenameOBJ = st + "OBJ";
 			//Model->convertCloudToSurface(filenameOBJ);
@@ -750,7 +773,7 @@ void MainWindow::scan()
 
 		cv::remap(distlaserOnImg, laserOnImg, map1, map2, cv::INTER_CUBIC);
 		cv::remap(distlaserOffImg, laserOffImg, map1, map2, cv::INTER_CUBIC);
-		
+
 		framePointsToCloud(laserOffImg, laserOnImg, 2);// , model);
 	}
 }
@@ -814,11 +837,11 @@ void MainWindow::updateTracker()
 		trackerChannel->GetTrackedFrame(trackedFrame);
 		repository->SetTransforms(trackedFrame);
 
-		
+
 		bool isCameraMatrixValid = false;
 		bool isToolMatrixValid = false;
 		//Camera transforms first
-		
+
 
 
 		if (repository->GetTransform(camera2TrackerName, camera2Tracker, &isCameraMatrixValid) == PLUS_SUCCESS && isCameraMatrixValid)
@@ -905,31 +928,44 @@ linalg::EndoPt MainWindow::getCameraPosition()
 
 linalg::EndoPt MainWindow::getNormalPosition()
 {
-	linalg::EndoPt normal, unitNorm; 
+	linalg::EndoPt normal, unitNorm;
 	// 
 	// //Get normals components:
 	// normal.x = rNormal2Tracker->GetElement(0, 0);
 	// normal.y = rNormal2Tracker->GetElement(1, 0);
 	// normal.z = rNormal2Tracker->GetElement(2, 0);
 	// 
+	vtkSmartPointer<vtkMatrix4x4> normal2Tracker = vtkSmartPointer<vtkMatrix4x4>::New();
 
+	bool isToolMatrixValid(false);
+	//origin 2 tracker = laser 2 tracker * normal 2 laser
+	repository->GetTransform(rLaser2TrackerName, rLaser2Tracker, &isToolMatrixValid);
+	vtkMatrix4x4::Multiply4x4(rLaser2Tracker, laser2Normal, normal2Tracker);
+
+	normal.x = normal2Tracker->GetElement(0, 0);
+	normal.y = normal2Tracker->GetElement(1, 0);
+	normal.z = normal2Tracker->GetElement(2, 0);
 
 	//Normalize vector
 	double norm = sqrt(normal.x*normal.x + normal.y*normal.y + normal.z*normal.z);
-	unitNorm.x = normal.x / norm; 
+	unitNorm.x = normal.x / norm;
 	unitNorm.y = normal.y / norm;
 	unitNorm.z = normal.z / norm;
 
 	return unitNorm;
-
 }
 
 linalg::EndoPt MainWindow::getOriginPosition()
 {
-	linalg::EndoPt origin; 
-	origin.x = rOrigin2Tracker->GetElement(0, 3);
-	origin.y = rOrigin2Tracker->GetElement(1, 3);
-	origin.z = rOrigin2Tracker->GetElement(2, 3);
+	linalg::EndoPt origin;
+	vtkSmartPointer<vtkMatrix4x4> origin2Tracker = vtkSmartPointer<vtkMatrix4x4>::New();
+	bool isToolMatrixValid(false);
+	repository->GetTransform(rLaser2TrackerName, rLaser2Tracker, &isToolMatrixValid);
+	vtkMatrix4x4::Multiply4x4(rLaser2Tracker, origin2Laser, origin2Tracker);
+
+	origin.x = origin2Tracker->GetElement(0, 3);
+	origin.y = origin2Tracker->GetElement(1, 3);
+	origin.z = origin2Tracker->GetElement(2, 3);
 
 	return origin;
 }
@@ -957,7 +993,7 @@ linalg::EndoPt MainWindow::getGreenOriginPosition()
 	origin.y = gOrigin2Tracker->GetElement(1, 3);
 	origin.z = gOrigin2Tracker->GetElement(2, 3);
 
-	return origin; 
+	return origin;
 }
 
 
@@ -1225,8 +1261,8 @@ void MainWindow::viewCloudClicked()
 
 	else
 		return;
-		//TO DO:
-		//EndoModel::createVTKPC(filename.toStdString());
+	//TO DO:
+	//EndoModel::createVTKPC(filename.toStdString());
 }
 
 void MainWindow::camWebcam(bool checked)
@@ -1376,7 +1412,7 @@ cv::Mat MainWindow::subtractLaser(cv::Mat &laserOff, cv::Mat &laserOn)
 
 cv::Mat MainWindow::subImAlgo(cv::Mat &laserOff, cv::Mat &laserOn, int laserColor)
 {
-	
+
 	//Define local cv"mats
 	cv::Mat subImg, bgr[3], filteredRed, threshImg, greyMat, convImg;
 	//subtract laser on and off matricies to get the laser
@@ -1434,7 +1470,7 @@ vector<cv::Vec4i> MainWindow::detectLaserLine(cv::Mat &laserOff, cv::Mat &laserO
 void MainWindow::framePointsToCloud(cv::Mat &laserOn, cv::Mat &laserOff, int res)//, EndoModel* model)
 {
 	//check if able to transform all entities into tracker space
-	
+
 	if (!trackReady)
 	{
 		LOG_ERROR("Unable to transform one or many translations");
@@ -1442,18 +1478,17 @@ void MainWindow::framePointsToCloud(cv::Mat &laserOn, cv::Mat &laserOff, int res
 	}
 
 	if (paused) return;
-	updateTracker();
 	//get camera centre 
 	linalg::EndoPt camera = getCameraPosition();	//updates camera coords
 
 	linalg::EndoPt vectorProj, calcPixel, origin, normal;
 
 	int colorCode;
-								//laser plane geometry
+	//laser plane geometry
 	if (usingRedLaser) {
 		normal = getNormalPosition();		//updates normal
 		origin = getOriginPosition();		//updates origin
-		colorCode = 2; 
+		colorCode = 2;
 	}
 
 	else {
@@ -1463,6 +1498,7 @@ void MainWindow::framePointsToCloud(cv::Mat &laserOn, cv::Mat &laserOff, int res
 	}
 
 	
+
 	cv::Mat laserLineImg = subImAlgo(laserOff, laserOn, colorCode);
 
 	int maxIndicies[480] = {};	//initialize as all 0's in order to access laserLineImg.at<uchar>
@@ -1470,7 +1506,7 @@ void MainWindow::framePointsToCloud(cv::Mat &laserOn, cv::Mat &laserOff, int res
 	for (int row = 0; row < laserOff.rows; row++) {
 		for (int col = 0; col < laserOff.cols; col++)
 		{
-			if (laserLineImg.at<uchar>(row, col) > laserLineImg.at<uchar>(row , maxIndicies[row]))		//find col of highest intensity per row	
+			if (laserLineImg.at<uchar>(row, col) > laserLineImg.at<uchar>(row, maxIndicies[row]))		//find col of highest intensity per row	
 				maxIndicies[row] = col;
 		}
 	}
@@ -1508,9 +1544,9 @@ void MainWindow::framePointsToCloud(cv::Mat &laserOn, cv::Mat &laserOff, int res
 				Model->addPointToPointCloud(intersection);				//change after testing
 
 				if (saveDataBool)
-					saveData(camera, vectorProj, normal, origin, plane, camLine, maxIndicies[row], row,  intersection);
+					saveData(camera, vectorProj, normal, origin, plane, camLine, maxIndicies[row], row, intersection);
 
-					//saveData(camera, vectorProj, normal, origin, camLine, maxIndicies[row], row, calcPixel, intersection);
+				//saveData(camera, vectorProj, normal, origin, camLine, maxIndicies[row], row, calcPixel, intersection);
 			}
 		}
 	}
@@ -1519,16 +1555,16 @@ void MainWindow::framePointsToCloud(cv::Mat &laserOn, cv::Mat &laserOff, int res
 linalg::EndoPt MainWindow::getPixelDirection(int row, int col)		//returns pixel location in tracker space
 {
 	linalg::EndoPt direction;
-	double pixelPrime[3], normPrime[4], result[4]; 
+	double pixelPrime[3], normPrime[4], result[4];
 	double pixel[3] = { col, row, 1.00 };
 	invA->MultiplyPoint(pixel, pixelPrime);
 
 	//normalize and append 0 (for vectors):
-	double length = sqrt(pixelPrime[0]* pixelPrime[0] + pixelPrime[1] * pixelPrime[1] + pixelPrime[2] * pixelPrime[2]);
-	
+	double length = sqrt(pixelPrime[0] * pixelPrime[0] + pixelPrime[1] * pixelPrime[1] + pixelPrime[2] * pixelPrime[2]);
+
 	for (int i = 0; i < 3; i++)
-		normPrime[i] = pixelPrime[i] / length; 
-	normPrime[3] = 0; 
+		normPrime[i] = pixelPrime[i] / length;
+	normPrime[3] = 0;
 
 	//convert vector direction into world coordinate system
 	camera2Tracker->MultiplyPoint(normPrime, result);
@@ -1537,7 +1573,7 @@ linalg::EndoPt MainWindow::getPixelDirection(int row, int col)		//returns pixel 
 	direction.x = result[0];
 	direction.y = result[1];
 	direction.z = result[2];
-	return direction; 
+	return direction;
 }
 
 linalg::EndoPt MainWindow::validatePixel(linalg::EndoPt point)
@@ -1575,8 +1611,8 @@ void MainWindow::about()
 }
 
 
-void MainWindow::saveData(linalg::EndoPt cameraPt, linalg::EndoPt pixelPt, linalg::EndoPt normalPt, linalg::EndoPt originPt,linalg::EndoPlane plane, linalg::EndoLine cameraline,
-	int col, int row,  linalg::EndoPt inter)
+void MainWindow::saveData(linalg::EndoPt cameraPt, linalg::EndoPt pixelPt, linalg::EndoPt normalPt, linalg::EndoPt originPt, linalg::EndoPlane plane, linalg::EndoLine cameraline,
+	int col, int row, linalg::EndoPt inter)
 {
 
 	//CAM:
@@ -1618,7 +1654,7 @@ void MainWindow::saveData(linalg::EndoPt cameraPt, linalg::EndoPt pixelPt, linal
 	ResultsFile << col << ",";
 	ResultsFile << row << ",";
 
-	
+
 	//intersection:
 	ResultsFile << inter.x << ",";
 	ResultsFile << inter.y << ",";
@@ -1629,10 +1665,10 @@ void MainWindow::saveData(linalg::EndoPt cameraPt, linalg::EndoPt pixelPt, linal
 	{
 		for (int j = 0; j < 4; j++)
 		{
-			ResultsFile << rLaser2Tracker->GetElement(i,j) << ",";
+			ResultsFile << rLaser2Tracker->GetElement(i, j) << ",";
 		}
 	}
-	
+
 	//Camera to tracker transform
 	for (int i = 0; i < 4; i++)
 	{
