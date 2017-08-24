@@ -946,6 +946,8 @@ linalg::EndoPt MainWindow::getNormalPosition()
 	normal.y = normal2Tracker->GetElement(1, 0);
 	normal.z = normal2Tracker->GetElement(2, 0);
 
+
+
 	//Normalize vector
 	double norm = sqrt(normal.x*normal.x + normal.y*normal.y + normal.z*normal.z);
 	unitNorm.x = normal.x / norm;
@@ -961,6 +963,7 @@ linalg::EndoPt MainWindow::getOriginPosition()
 	vtkSmartPointer<vtkMatrix4x4> origin2Tracker = vtkSmartPointer<vtkMatrix4x4>::New();
 	bool isToolMatrixValid(false);
 	repository->GetTransform(rLaser2TrackerName, rLaser2Tracker, &isToolMatrixValid);
+	
 	vtkMatrix4x4::Multiply4x4(rLaser2Tracker, laser2Origin, origin2Tracker);
 
 	origin.x = origin2Tracker->GetElement(0, 3);
@@ -1521,7 +1524,7 @@ void MainWindow::framePointsToCloud(cv::Mat &laserOn, cv::Mat &laserOff, int res
 
 	//Debugging
 
-	for (int row = 0; row < laserOff.rows; row++)
+	for (int row = 0 + VERTICAL_OFFSET; row < laserOff.rows; row++)
 	{
 		if (maxIndicies[row] > 0)															//if max value is located at column = 0, laser line not detected for that row. 
 		{

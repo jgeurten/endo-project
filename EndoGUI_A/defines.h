@@ -2,7 +2,7 @@
 #ifndef DEFINES_H
 #define DEFINES_H
 
-#define VERTICAL_OFFSET 50
+#define VERTICAL_OFFSET 25
 #define HORIZONTAL_OFFSET 75
 
 

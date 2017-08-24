@@ -103,31 +103,45 @@ void EndoModel::addPointToPointCloud(linalg::EndoPt point)
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr EndoModel::filterCloud()
 {
-	//create int mat to hold row values
-	const int nrows = (int) pointCount;
-	std::vector<int> rowIndex(nrows);
+	std::vector<int> rowIndex(pointCount);
 	int colIn = 24;			//column of interest
 	int ncols = 59;
-	string line; 
+	int row = 0;
+
 	//Parse Results.csv to get associated row # for Intersection X,Y,Z
 	string openFile = "./Results/Results.csv";
-	ifstream resultsFile(openFile);
+	ifstream readFile(openFile);
+	string line, subline;
+	char cstr[5];
 
-	for (int row = 0; row < nrows; row++)
+	for (int row = 0; row < pointCount; row++)
 	{
-		for (int i = 0; i < colIn; i++)
-			getline(resultsFile, line);
-		rowIndex[row] = stoi(line);
-		for (int j = colIn; j < ncols; j++)
-			getline(resultsFile, line);
+		int i = 0;
+		while (i != colIn - 1)
+		{
+			readFile.ignore(256, ',');
+			i++;
+		}
+		getline(readFile, line);
+		subline = line.substr(0, 4);
+		strcpy(cstr, subline.c_str());
+		for (int j = 0; j < 4; j++)
+		{
+			if (row == 0)
+				break;
+
+			if (cstr[j] == ',')
+			{
+				rowIndex[row] = stoi(line.substr(0, j));//store the col of interest
+				break;
+			}
+		}
 	}
 
 	string fileLocation = "./Results/PolyData.csv";
 	ofstream ResultsFile;
-	ResultsFile.open(fileLocation, ios::out | ios::binary |ios::trunc);		//discard previous contents
-
-	//Results file header:
-	ResultsFile << "X," << "Y," << "Z," << "Index" << endl;
+	ResultsFile.open(fileLocation, ios::out | ios::binary | ios::trunc);		//discard previous contents
+	ResultsFile << "X," << "Y," << "Z," << "Row" << endl;
 
 	//calculate centroid
 	linalg::EndoPt centroid;
@@ -200,17 +214,17 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr EndoModel::filterCloud()
 void EndoModel::savePointCloudAsPLY(string &filename)
 {
 	if (pointCloud->size() == 0) return;
-	pcl::PointCloud<pcl::PointXYZ>::Ptr filteredCloud;
-	filteredCloud = filterCloud();
-	pcl::io::savePLYFileASCII(filename, *filteredCloud);
+	//pcl::PointCloud<pcl::PointXYZ>::Ptr filteredCloud;
+	//filteredCloud = filterCloud();
+	pcl::io::savePLYFileASCII(filename, *pointCloud);
 }
 
 void EndoModel::savePointCloudAsPCD(string &filename)
 {
 	if (pointCloud->size() == 0) return;
-	//pcl::PointCloud<pcl::PointXYZ>::Ptr filteredCloud;
-	//filteredCloud = filterCloud();
-	pcl::io::savePCDFileASCII(filename, *pointCloud);
+	pcl::PointCloud<pcl::PointXYZ>::Ptr filteredCloud;
+	filteredCloud = filterCloud();
+	pcl::io::savePCDFileASCII(filename, *filteredCloud);
 }
 
 void EndoModel::saveMesh(string &filename)
