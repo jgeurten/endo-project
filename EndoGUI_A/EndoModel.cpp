@@ -77,9 +77,9 @@ EndoModel::EndoModel()
 
 	this->points = vtkPoints::New();
 	pointCount = 0; 
-	ptdistance.x = 0; 
-	ptdistance.y = 0;
-	ptdistance.z = 0;
+	sum.x = 0; 
+	sum.y = 0;
+	sum.z = 0;
 
 	SD = 0; 
 }
@@ -91,61 +91,105 @@ void EndoModel::addPointToPointCloud(linalg::EndoPt point)
 	pt.y = point.y;
 	pt.z = point.z;
 	pointCloud->push_back(pt);
-	//calculate distance between current and prev point:
-	if (pointCount != 0)
-	{
-		//calculate euclidean 3D distance
-		ptdistance.x += sqrt(std::pow(prevPt.x - pt.x, 2));
-		ptdistance.y += sqrt(std::pow(prevPt.y - pt.y, 2));
-		ptdistance.x += sqrt(std::pow(prevPt.z - pt.z, 2));
-	}
+	//calculate total sum in x,y,z direction
+	
+	sum.x += pt.x;
+	sum.y += pt.y;
+	sum.z += pt.z;
+	
 	//update count and prev point data
 	pointCount++; 
-	prevPt = pt; 
 }
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr EndoModel::filterCloud()
 {
-	//calculate mean euclidean distance:
-	linalg::EndoPt mean;
-	mean.x = ptdistance.x / pointCount;
-	mean.y = ptdistance.y / pointCount;
-	mean.z = ptdistance.z / pointCount;
+	//create int mat to hold row values
+	const int nrows = (int) pointCount;
+	std::vector<int> rowIndex(nrows);
+	int colIn = 24;			//column of interest
+	int ncols = 59;
+	string line; 
+	//Parse Results.csv to get associated row # for Intersection X,Y,Z
+	string openFile = "./Results/Results.csv";
+	ifstream resultsFile(openFile);
 
-	//calculate SD:
-	linalg::EndoPt SD;
+	for (int row = 0; row < nrows; row++)
+	{
+		for (int i = 0; i < colIn; i++)
+			getline(resultsFile, line);
+		rowIndex[row] = stoi(line);
+		for (int j = colIn; j < ncols; j++)
+			getline(resultsFile, line);
+	}
+
+	string fileLocation = "./Results/PolyData.csv";
+	ofstream ResultsFile;
+	ResultsFile.open(fileLocation, ios::out | ios::binary |ios::trunc);		//discard previous contents
+
+	//Results file header:
+	ResultsFile << "X," << "Y," << "Z," << "Index" << endl;
+
+	//calculate centroid
+	linalg::EndoPt centroid;
+	centroid.x = sum.x / pointCount;
+	centroid.y = sum.y / pointCount;
+	centroid.z = sum.z / pointCount;
+
+	//calculate mean and SD of points from centroid:
+	linalg::EndoPt SD, mean, dist;
+	mean.x = 0;
+	mean.y = 0;
+	mean.z = 0;
 	SD.x = 0; 
 	SD.y = 0;
 	SD.z = 0;
+
+	//calculate mean distance from centroid
 	for (int i = 0; i < pointCount; i++)
 	{
-		SD.x += std::pow(pointCloud->points[i].x -mean.x, 2);		//technically = variance at the moment
-		SD.y += std::pow(pointCloud->points[i].y -mean.y, 2);
-		SD.z += std::pow(pointCloud->points[i].z -mean.z, 2);
+		mean.x += sqrt(std::pow(pointCloud->points[i].x -centroid.x, 2));		
+		mean.y += sqrt(std::pow(pointCloud->points[i].y -centroid.y, 2));
+		mean.z += sqrt(std::pow(pointCloud->points[i].z -centroid.z, 2));
 	}
 
-	SD.x = sqrt(SD.x) / (pointCount - 1);	//SD form
-	SD.y = sqrt(SD.y) / (pointCount - 1);
-	SD.z = sqrt(SD.z) / (pointCount - 1);
+	mean.x = mean.x/pointCount;
+	mean.y = mean.y/pointCount;
+	mean.z = mean.z/pointCount;
+	
+	//calculate sd distance from centroid
+	for (int i = 0; i < pointCount; i++)
+	{
+		dist.x = sqrt(std::pow(pointCloud->points[i].x - centroid.x,2));
+		dist.y = sqrt(std::pow(pointCloud->points[i].y - centroid.y,2));
+		dist.z = sqrt(std::pow(pointCloud->points[i].z - centroid.z,2));
+		SD.x += abs(dist.x - mean.x);
+		SD.y += abs(dist.y - mean.y);
+		SD.z += abs(dist.z - mean.z);
+	}
+
+	SD.x = sqrt(SD.x / (pointCount - 1));	//SD form
+	SD.y = sqrt(SD.y / (pointCount - 1));
+	SD.z = sqrt(SD.z / (pointCount - 1));
 
 	pcl::PointCloud<pcl::PointXYZ>::Ptr filteredCloud(new pcl::PointCloud<pcl::PointXYZ>);
 	//remove outliers:
 	pcl::PointXYZ pt; 
-	for (int i = 0; i < pointCount - 1; i++)
+	for (int i = 0; i < pointCount ; i++)
 	{	
-		if (sqrt(std::pow(pointCloud->points[i].x - pointCloud->points[i + 1].x, 2)) < SD.x + mean.x			//if within 1 sd of mean in each direction
-			&& sqrt(std::pow(pointCloud->points[i].x - pointCloud->points[i + 1].x, 2)) > mean.x - SD.x)
+		if (sqrt(std::pow(pointCloud->points[i].x - centroid.x, 2)) < 2*SD.x + mean.x)		//if within 2 sd of mean in each direction from the centroid --> ADD
 		{
-			if (sqrt(std::pow(pointCloud->points[i].y - pointCloud->points[i + 1].y, 2)) < SD.y + mean.y
-				&& sqrt(std::pow(pointCloud->points[i].y - pointCloud->points[i + 1].y, 2)) > mean.y - SD.y)
+			if (sqrt(std::pow(pointCloud->points[i].y - centroid.y, 2)) < 2*SD.y + mean.y)	//will drop ~5% of points
 			{
-				if (sqrt(std::pow(pointCloud->points[i].z - pointCloud->points[i + 1].z, 2)) < SD.z + mean.z
-					&& sqrt(std::pow(pointCloud->points[i].z - pointCloud->points[i + 1].z, 2)) > mean.z - SD.z)
+				if (sqrt(std::pow(pointCloud->points[i].z - centroid.z, 2)) < 2*SD.z + mean.z)
 				{
-					pt.x = pointCloud->points[i+1].x;
-					pt.y = pointCloud->points[i+1].y;
-					pt.z = pointCloud->points[i+1].z;
+					pt.x = pointCloud->points[i].x;
+					pt.y = pointCloud->points[i].y;
+					pt.z = pointCloud->points[i].z;
 					filteredCloud->push_back(pt);
+					ResultsFile <<pt.x << ",";													//save filtered data for polyline writer
+					ResultsFile <<pt.y << ",";
+					ResultsFile <<pt.z << ",";
+					ResultsFile << rowIndex[i] << endl;
 				}
 			}
 		}
@@ -164,9 +208,9 @@ void EndoModel::savePointCloudAsPLY(string &filename)
 void EndoModel::savePointCloudAsPCD(string &filename)
 {
 	if (pointCloud->size() == 0) return;
-	pcl::PointCloud<pcl::PointXYZ>::Ptr filteredCloud;
-	filteredCloud = filterCloud();
-	pcl::io::savePCDFileASCII(filename, *filteredCloud);
+	//pcl::PointCloud<pcl::PointXYZ>::Ptr filteredCloud;
+	//filteredCloud = filterCloud();
+	pcl::io::savePCDFileASCII(filename, *pointCloud);
 }
 
 void EndoModel::saveMesh(string &filename)
@@ -174,6 +218,7 @@ void EndoModel::saveMesh(string &filename)
 	if (pointCloud->size() == 0) return;		//point cloud will be non-null since pointcloud is converted to polygon mesh.
 	pcl::io::saveOBJFile(filename, *surfaceMesh);
 }
+
 
 
 size_t EndoModel::getCloudSize()

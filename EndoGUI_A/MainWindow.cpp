@@ -149,8 +149,8 @@ MainWindow::MainWindow(QWidget *parent)
 	//distortion = (cv::Mat1d(1, 4) << 6.8932389700580091e-02, 1.7232721105351856e-01, -3.7101608187164112e-03, 4.9653539798082211e-03);// , -2.5076577085136855e+00);
 	////distortion = (cv::Mat1d(1, 4) << 8.99827331e-002, -2.04057172e-001, -3.27174924e-003, -2.31121108e-003);
 
-	intrinsics = (cv::Mat1d(3, 3) << 609.710537, 0, 303.200522, 0, 606.011374, 258.905227, 0, 0, 1);
-	distortion = (cv::Mat1d(1, 4) << 0.084930, -0.153198, 0.011283, -0.000882);// , -2.5076577085136855e+00); 
+	intrinsics = (cv::Mat1d(3, 3) << 6.402751e+002, 0, 3.107882e+002, 0, 5.956964e+002, 2.440929e+002, 0, 0, 1);
+	distortion = (cv::Mat1d(1, 4) << 1.177865e-001, - 3.885199e-001 ,- 2.19673828e-004, - 3.368759e-003);// , -2.5076577085136855e+00); 
 
 
 }
@@ -517,12 +517,12 @@ void MainWindow::createVTKObject()
 	intrinsicsMat->SetElement(2, 2, 1);
 	*/
 	//New calibration:
-	intrinsicsMat->SetElement(0, 0, 609.710537);
+	intrinsicsMat->SetElement(0, 0, 6.402751e+002);
 	intrinsicsMat->SetElement(0, 1, 0);
-	intrinsicsMat->SetElement(0, 2, 303.200522);
+	intrinsicsMat->SetElement(0, 2, 3.107882e+002);
 	intrinsicsMat->SetElement(1, 0, 0);
-	intrinsicsMat->SetElement(1, 1, 606.011374);
-	intrinsicsMat->SetElement(1, 2, 258.905227);
+	intrinsicsMat->SetElement(1, 1, 5.956964e+002);
+	intrinsicsMat->SetElement(1, 2, 2.440929e+002);
 	intrinsicsMat->SetElement(2, 0, 0);
 	intrinsicsMat->SetElement(2, 1, 0);
 	intrinsicsMat->SetElement(2, 2, 1);
@@ -566,7 +566,7 @@ void MainWindow::createVTKObject()
 	laser2Origin->SetElement(3, 2, 0);
 	laser2Origin->SetElement(3, 3, 1);
 
-	vtkMatrix4x4::Invert(laser2Origin, origin2Laser);
+	//vtkMatrix4x4::Invert(laser2Origin, origin2Laser);
 }
 
 void MainWindow::camera_button_clicked()
@@ -666,7 +666,7 @@ void MainWindow::scanButtonPress()
 		Model = new EndoModel();
 
 		string fileLocation = "./Results/Results.csv";
-		ResultsFile.open(fileLocation, ios::out | ios::ate | ios::app | ios::binary);
+		ResultsFile.open(fileLocation, ios::out | ios::binary |ios::trunc);	//overwrite data
 
 		//Results file header:
 		ResultsFile << "Cam X," << "Cam Y," << "Cam Z,"
@@ -961,7 +961,7 @@ linalg::EndoPt MainWindow::getOriginPosition()
 	vtkSmartPointer<vtkMatrix4x4> origin2Tracker = vtkSmartPointer<vtkMatrix4x4>::New();
 	bool isToolMatrixValid(false);
 	repository->GetTransform(rLaser2TrackerName, rLaser2Tracker, &isToolMatrixValid);
-	vtkMatrix4x4::Multiply4x4(rLaser2Tracker, origin2Laser, origin2Tracker);
+	vtkMatrix4x4::Multiply4x4(rLaser2Tracker, laser2Origin, origin2Tracker);
 
 	origin.x = origin2Tracker->GetElement(0, 3);
 	origin.y = origin2Tracker->GetElement(1, 3);
@@ -1254,15 +1254,12 @@ void MainWindow::viewCloudClicked()
 	trackerControl->viewCloud->setChecked(true);
 
 	QString filename = QFileDialog::getOpenFileName(this, tr("Open File"),
-		"./Results", tr("3D Scan Files (*.pcd *.ply *.OBJ)"));
+		"./Results", tr("CSV Files (*.csv)"));
 
 	if (filename.isEmpty())
 		return;
 
-	else
-		return;
-	//TO DO:
-	//EndoModel::createVTKPC(filename.toStdString());
+	
 }
 
 void MainWindow::camWebcam(bool checked)

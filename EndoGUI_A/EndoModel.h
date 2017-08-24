@@ -52,7 +52,7 @@ public:
 	 void createVTKPC(string filename); 
 	 float pointCount; 
 	 double SD; 
-	 linalg::EndoPt ptdistance; 
+	 linalg::EndoPt sum; 
 	 pcl::PointCloud<pcl::PointXYZ>::Ptr filterCloud();
 //Static functions:	
 	static void viewPointCloud(string &filename, int fileType, linalg::EndoPt camera);
