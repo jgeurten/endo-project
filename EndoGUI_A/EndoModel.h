@@ -34,9 +34,11 @@ private:
 public:
 
 	pcl::PointCloud<pcl::PointXYZ>::Ptr pointCloud;
+	pcl::PointCloud<pcl::PointXYZ>::Ptr filteredCloud;
 	pcl::PolygonMesh::Ptr surfaceMesh; 
 	vtkPoints* points; 
 	pcl::PointXYZ prevPt; 
+	std::vector<int> indicies; 
 
 	EndoModel();
 	void addPointToPointCloud(linalg::EndoPt point);
@@ -44,6 +46,9 @@ public:
 	void savePointCloudAsPLY(string &filename); 
 	void savePointCloudAsPCD(string &filename);
 	void saveMesh(string &filename);
+	void savePolyLines(string &filename);
+	pcl::PointCloud<pcl::PointXYZ>::Ptr filterCloud();
+
 	void removeOutliers(int meanK, float SD);
 	size_t getCloudSize(); 
 	void convertCloudToSurface(string &filename);
@@ -53,7 +58,7 @@ public:
 	 float pointCount; 
 	 double SD; 
 	 linalg::EndoPt sum; 
-	 pcl::PointCloud<pcl::PointXYZ>::Ptr filterCloud();
+	
 //Static functions:	
 	static void viewPointCloud(string &filename, int fileType, linalg::EndoPt camera);
 };

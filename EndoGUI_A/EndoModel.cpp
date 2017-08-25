@@ -41,7 +41,11 @@
 #include <vtkContourFilter.h>
 #include <vtkPLYWriter.h>
 #include <vtkReverseSense.h>
-
+#include <vtkPolyLine.h>
+#include <vtkCellData.h>
+#include <vtkPolyLine.h>
+#include <vtkPolyData.h>
+#include <vtkXMLPolyDataWriter.h>
 
  //boost
 #include <boost/thread/thread.hpp>
@@ -71,6 +75,8 @@ EndoModel::EndoModel()
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
 	this->pointCloud = cloud;			//May be redundant
 
+	filteredCloud.reset(new pcl::PointCloud<pcl::PointXYZ>);
+
 	surfaceMesh.reset(new pcl::PolygonMesh); 
 	pcl::PolygonMesh::Ptr _surfMesh(new pcl::PolygonMesh); 
 	this->surfaceMesh = _surfMesh;
@@ -81,7 +87,7 @@ EndoModel::EndoModel()
 	sum.y = 0;
 	sum.z = 0;
 
-	SD = 0; 
+	SD = 0;
 }
 
 void EndoModel::addPointToPointCloud(linalg::EndoPt point)
@@ -132,16 +138,11 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr EndoModel::filterCloud()
 
 			if (cstr[j] == ',')
 			{
-				rowIndex[row] = stoi(line.substr(0, j));//store the col of interest
+				rowIndex[row] = stoi(line.substr(0, j));     //store the col of interest
 				break;
 			}
 		}
 	}
-
-	string fileLocation = "./Results/PolyData.csv";
-	ofstream ResultsFile;
-	ResultsFile.open(fileLocation, ios::out | ios::binary | ios::trunc);		//discard previous contents
-	ResultsFile << "X," << "Y," << "Z," << "Row" << endl;
 
 	//calculate centroid
 	linalg::EndoPt centroid;
@@ -192,7 +193,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr EndoModel::filterCloud()
 	{	
 		if (sqrt(std::pow(pointCloud->points[i].x - centroid.x, 2)) < 2*SD.x + mean.x)		//if within 2 sd of mean in each direction from the centroid --> ADD
 		{
-			if (sqrt(std::pow(pointCloud->points[i].y - centroid.y, 2)) < 2*SD.y + mean.y)	//will drop ~5% of points
+			if (sqrt(std::pow(pointCloud->points[i].y - centroid.y, 2)) < 2*SD.y +  mean.y)	//will drop ~5% of points
 			{
 				if (sqrt(std::pow(pointCloud->points[i].z - centroid.z, 2)) < 2*SD.z + mean.z)
 				{
@@ -200,29 +201,25 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr EndoModel::filterCloud()
 					pt.y = pointCloud->points[i].y;
 					pt.z = pointCloud->points[i].z;
 					filteredCloud->push_back(pt);
-					ResultsFile <<pt.x << ",";													//save filtered data for polyline writer
-					ResultsFile <<pt.y << ",";
-					ResultsFile <<pt.z << ",";
-					ResultsFile << rowIndex[i] << endl;
+					indicies.push_back(rowIndex[i]);
 				}
 			}
 		}
 	}
+
 	return filteredCloud;
 }
 
 void EndoModel::savePointCloudAsPLY(string &filename)
 {
 	if (pointCloud->size() == 0) return;
-	//pcl::PointCloud<pcl::PointXYZ>::Ptr filteredCloud;
-	//filteredCloud = filterCloud();
-	pcl::io::savePLYFileASCII(filename, *pointCloud);
+	filteredCloud = filterCloud();
+	pcl::io::savePLYFileASCII(filename, *filteredCloud);
 }
 
 void EndoModel::savePointCloudAsPCD(string &filename)
 {
 	if (pointCloud->size() == 0) return;
-	pcl::PointCloud<pcl::PointXYZ>::Ptr filteredCloud;
 	filteredCloud = filterCloud();
 	pcl::io::savePCDFileASCII(filename, *filteredCloud);
 }
@@ -233,7 +230,97 @@ void EndoModel::saveMesh(string &filename)
 	pcl::io::saveOBJFile(filename, *surfaceMesh);
 }
 
+void EndoModel::savePolyLines(string &filename)
+{
+	if (filteredCloud->size() == 0) return;
+	
+	vtkSmartPointer< vtkAppendPolyData > append =
+		vtkSmartPointer< vtkAppendPolyData >::New();
+	vtkSmartPointer< vtkPolyLine > polyline =
+		vtkSmartPointer< vtkPolyLine >::New();
+	vtkSmartPointer< vtkPoints > points =
+		vtkSmartPointer< vtkPoints >::New();
 
+	int linePtCnt = 0;
+	for (int iter = 0; iter < filteredCloud->size() - 1; iter++)
+	{
+		points->InsertNextPoint(filteredCloud->points[iter].x, filteredCloud->points[iter].y, filteredCloud->points[iter].z);
+		linePtCnt++;
+		if (indicies[iter] > indicies[iter + 1])			//new line
+		{
+			polyline->GetPointIds()->SetNumberOfIds(linePtCnt);				//add all points incurred
+			
+			for (unsigned int i = 0; i < linePtCnt; i++)
+			{
+				polyline->GetPointIds()->SetId(i, i);
+			}
+			linePtCnt = 0;
+			// Create a cell array to store the lines in and add the lines to it
+			
+
+			vtkSmartPointer<vtkCellArray> cells =
+				vtkSmartPointer<vtkCellArray>::New();
+
+			vtkSmartPointer< vtkPolyData > polyData =
+				vtkSmartPointer< vtkPolyData >::New();	
+		
+			cells->InsertNextCell(polyline);
+
+			polyData->SetPoints(points);
+			polyData->SetLines(cells);
+			polyData->Modified();
+
+			append->AddInputData(polyData);
+			append->Modified();
+
+			
+
+			vtkSmartPointer< vtkPoints > points =
+				vtkSmartPointer< vtkPoints >::New();
+
+			vtkSmartPointer< vtkPolyLine > polyline =
+				vtkSmartPointer< vtkPolyLine >::New();	
+
+		}
+	}
+
+	vtkSmartPointer<vtkCleanPolyData> cleanFilter =
+		vtkSmartPointer<vtkCleanPolyData>::New();
+	cleanFilter->SetInputConnection(append->GetOutputPort());
+	cleanFilter->Update();
+
+	//Create a mapper and actor
+	vtkSmartPointer<vtkPolyDataMapper> mapper =
+		vtkSmartPointer<vtkPolyDataMapper>::New();
+	mapper->SetInputConnection(cleanFilter->GetOutputPort());
+
+	vtkSmartPointer<vtkActor> actor =
+		vtkSmartPointer<vtkActor>::New();
+	actor->SetMapper(mapper);
+
+	//Create a renderer, render window, and interactor
+	vtkSmartPointer<vtkRenderer> renderer =
+		vtkSmartPointer<vtkRenderer>::New();
+	vtkSmartPointer<vtkRenderWindow> renderWindow =
+		vtkSmartPointer<vtkRenderWindow>::New();
+	renderWindow->AddRenderer(renderer);
+	vtkSmartPointer<vtkRenderWindowInteractor> renderWindowInteractor =
+		vtkSmartPointer<vtkRenderWindowInteractor>::New();
+	renderWindowInteractor->SetRenderWindow(renderWindow);
+
+	//Add the actors to the scene
+	renderer->AddActor(actor);
+	renderer->SetBackground(.3, .2, .1); // Background color dark red
+
+										 //Render and interact
+	renderWindow->Render();
+	renderWindowInteractor->Start();
+
+	//vtkSmartPointer<vtkXMLPolyDataWriter> writer = vtkSmartPointer<vtkXMLPolyDataWriter>::New();
+	//writer->SetFileName(filename.c_str());
+	//writer->SetInputData(polyData);
+	//writer->Write();
+}
 
 size_t EndoModel::getCloudSize()
 {
