@@ -4,7 +4,7 @@ PROJECT(EndoScanner)
 
 
 FIND_PACKAGE(PCL REQUIRED NO_MODULE)
-#COMPONENTS common io features recognition)
+#COMPONENTS common io features recognition exports)
 
 FIND_PACKAGE(OpenCV REQUIRED NO_MODULE)
 FIND_PACKAGE(PlusLib REQUIRED NO_MODULE)

@@ -68,6 +68,7 @@ private:
 
 	int brightness = 5;
 	int contrast = 5;
+	int exposure = 5;
 	int focus = 150;
 	//QCameraFocus *focus;
 	QCamera *camera;

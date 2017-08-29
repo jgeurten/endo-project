@@ -186,6 +186,8 @@ private:
 
 	vtkSmartPointer<vtkMatrix4x4>					laser2Normal = vtkSmartPointer<vtkMatrix4x4>::New();
 	vtkSmartPointer<vtkMatrix4x4>					normal2Laser = vtkSmartPointer<vtkMatrix4x4>::New();
+	vtkSmartPointer<vtkMatrix4x4>					cam2OpticalAxis = vtkSmartPointer<vtkMatrix4x4>::New();
+	vtkSmartPointer<vtkMatrix4x4>					opticalAxis2Cam = vtkSmartPointer<vtkMatrix4x4>::New();
 
 	vtkSmartPointer<vtkMatrix4x4>					laser2Origin = vtkSmartPointer<vtkMatrix4x4>::New();
 	vtkSmartPointer<vtkMatrix4x4>					origin2Laser = vtkSmartPointer<vtkMatrix4x4>::New();

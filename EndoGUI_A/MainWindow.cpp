@@ -546,9 +546,6 @@ void MainWindow::createVTKObject()
 	laser2Normal->SetElement(3, 2, 0);
 	laser2Normal->SetElement(3, 3, 1);
 
-	//No need to invert
-	//vtkMatrix4x4::Invert(laser2Normal, normal2Laser);
-
 	laser2Origin->SetElement(0, 0, 1);
 	laser2Origin->SetElement(0, 1, 0);
 	laser2Origin->SetElement(0, 2, 0);
@@ -566,7 +563,28 @@ void MainWindow::createVTKObject()
 	laser2Origin->SetElement(3, 2, 0);
 	laser2Origin->SetElement(3, 3, 1);
 
-	//vtkMatrix4x4::Invert(laser2Origin, origin2Laser);
+	cam2OpticalAxis->SetElement(0, 0, -0.99981);
+	cam2OpticalAxis->SetElement(0, 1, -0.0148);
+	cam2OpticalAxis->SetElement(0, 2, -0.01251);
+	cam2OpticalAxis->SetElement(0, 3, -39.8957);
+	cam2OpticalAxis->SetElement(1, 0, 0.001761);
+	cam2OpticalAxis->SetElement(1, 1, 0.573427);
+	cam2OpticalAxis->SetElement(1, 2, -0.81925);
+	cam2OpticalAxis->SetElement(1, 3, -19.3914);
+	cam2OpticalAxis->SetElement(2, 0, 0.019293);
+	cam2OpticalAxis->SetElement(2, 1, -0.81912);
+	cam2OpticalAxis->SetElement(2, 2, -0.57329);
+	cam2OpticalAxis->SetElement(2, 3, 9.935949);
+	cam2OpticalAxis->SetElement(3, 0, 0);
+	cam2OpticalAxis->SetElement(3, 1, 0);
+	cam2OpticalAxis->SetElement(3, 2, 0);
+	cam2OpticalAxis->SetElement(3, 3, 1);
+
+	vtkMatrix4x4::Invert(cam2OpticalAxis, opticalAxis2Cam);
+
+
+
+
 }
 
 void MainWindow::camera_button_clicked()
@@ -665,10 +683,11 @@ void MainWindow::scanButtonPress()
 		//create new instance of model to add points
 		Model = new EndoModel();
 
-		string fileLocation = "./Results/Results.csv";
+		string fileLocation = "./Results/Validation.csv";
 		ResultsFile.open(fileLocation, ios::out | ios::binary | ios::trunc);	//overwrite data
 
 		//Results file header:
+		
 		ResultsFile << "Cam X," << "Cam Y," << "Cam Z,"
 			<< "VecProj X," << "VecProj Y," << "VecProj Z,"
 			<< "Plane Normal X," << "Plane Normal Y," << "Plane Normal Z,"
@@ -686,8 +705,17 @@ void MainWindow::scanButtonPress()
 			<< "R21," << "R22," << "R23," << "T2,"
 			<< "R31," << "R32," << "R33," << "T3,"
 			<< "R41," << "R42," << "R43," << "T4" << endl;
-
-
+			
+/*
+			//Validation results file header:
+		ResultsFile << "Laser Trans R11," << "R12," << "R13," << "T1,"
+			<< "R21," << "R22," << "R23," << "T2,"
+			<< "R31," << "R32," << "R33," << "T3,"
+			<< "R41," << "R42," << "R43," << "T4,"
+			<< "Camera Trans R11," << "R12," << "R13," << "T1,"
+			<< "R21," << "R22," << "R23," << "T2,"
+			<< "R31," << "R32," << "R33," << "T3,"
+			<< "R41," << "R42," << "R43," << "T4" << endl;*/
 	}
 	else		//finish scan:
 	{
@@ -701,17 +729,12 @@ void MainWindow::scanButtonPress()
 
 		isScanning = false;
 		ResultsFile.close();
-
-		/*		//Remove outliers and down sample point cloud before saving
-				int meanNN = 150;
-				float StdDev = 0.9;
-				statusBar()->showMessage(tr("Filtering Point Cloud. Please wait."), 8000);
-				//Want to see raw PC
-				Model->removeOutliers(meanNN, StdDev);	//updates pointcloud to point to a filtered pt cloud
-		*/		statusBar()->showMessage(tr("Saving Point Cloud. Please Wait."), 0);
+		statusBar()->showMessage(tr("Saving Point Cloud. Please Wait."), 0);
 		string filename = savePointCloud();
+
 		//convert to surface mesh and save, if enabled
-		if (saveAsMesh) {
+		if (saveAsMesh) 
+		{
 			statusBar()->showMessage(tr("Converting Point Cloud to Surface Mesh. This can take awhile."), 0);
 			string st = filename.substr(0, filename.size() - 3);
 			string filenameVTP = st + "VTP";
@@ -761,45 +784,53 @@ void MainWindow::scan()
 	{
 
 		if (togglecount % 2 == 0)
-			capture >> distlaserOnImg;
-
-		else
-			capture >> distlaserOffImg;
-
-		scancount = 0;
-
-		if (distlaserOnImg.empty() || distlaserOffImg.empty())	//only true for toggle count = 1
-			return;
-
-		if (togglecount % 2 == 0) {	//have both laser on and off successive images
-
+		{
+			capture >> distlaserOnImg;					//Get frame of laser on distorted image
 			cv::remap(distlaserOnImg, laserOnImg, map1, map2, cv::INTER_CUBIC);
 			cv::remap(distlaserOffImg, laserOffImg, map1, map2, cv::INTER_CUBIC);
-
-			framePointsToCloud(laserOffImg, laserOnImg, 2);// , model);
+			framePointsToCloud(laserOffImg, laserOnImg, 2);
 		}
+		else
+			capture >> distlaserOffImg;					//Get frame of laser off
+
+		scancount = 0;
 	}
 }
+
 /*
-void MainWindow::scan()
+void MainWindow::scan()		//validate transforms
 {
-	toggleLaser();			//turn on
-	Sleep(200);
-	capture >> distlaserOffImg;
+	int matSize = 4; //4x4 matrix
+	bool isLaserMatrixValid(false);
+	if (repository->GetTransform(rLaser2TrackerName, rLaser2Tracker, &isLaserMatrixValid) == PLUS_SUCCESS && isLaserMatrixValid)
+	{
+		//Output laser transform first:
+		for (int i = 0; i < matSize; i++)
+		{
+			for (int j = 0; j < matSize; j++)
+			{
+				ResultsFile << rLaser2Tracker->GetElement(i, j) << ",";
+			}
+		}
+	}
+	bool isCameraMatrixValid(false);
+	if (repository->GetTransform(camera2TrackerName, camera2Tracker, &isCameraMatrixValid) == PLUS_SUCCESS && isCameraMatrixValid)
+	{
+		//Output laser transform first:
+		for (int i = 0; i < matSize; i++)
+		{
+			for (int j = 0; j < matSize; j++)
+			{
+				ResultsFile << camera2Tracker->GetElement(i, j) << ","; 
+			}
+		}
+		ResultsFile << endl; 
+	}
+	
+}
+*/
 
-	toggleLaser();				//now turn off
-	Sleep(200);
-	capture >> distlaserOnImg;
-	if (distlaserOnImg.empty() || distlaserOffImg.empty())	//only true for toggle count = 1
-		return;
-
-	cv::remap(distlaserOnImg, laserOnImg, map1, map2, cv::INTER_CUBIC);
-	cv::remap(distlaserOffImg, laserOffImg, map1, map2, cv::INTER_CUBIC);
-
-	framePointsToCloud(laserOffImg, laserOnImg, 2);// , model);
-}*/
-
-void MainWindow::arduinoScanPress()
+void MainWindow::arduinoScanPress()				//For the laproscope version - green button press
 {
 	if (isScanning)					//if scanning, ignore
 		return;
@@ -810,7 +841,7 @@ void MainWindow::arduinoScanPress()
 
 }
 
-void MainWindow::arduinoPausePress()
+void MainWindow::arduinoPausePress()    //For the laproscope version - red button press
 {
 	if (!isScanning)
 		return;
@@ -940,9 +971,14 @@ void MainWindow::updateTracker()
 linalg::EndoPt MainWindow::getCameraPosition()
 {
 	linalg::EndoPt camera;
-	camera.x = camera2Tracker->GetElement(0, 3);		// camera w.r.t. tracker. Forms the origin of the line to pixel
-	camera.y = camera2Tracker->GetElement(1, 3);
-	camera.z = camera2Tracker->GetElement(2, 3);
+	vtkSmartPointer<vtkMatrix4x4> axis2Tracker = vtkSmartPointer<vtkMatrix4x4>::New();
+
+	bool isToolMatrixValid(false);
+	repository->GetTransform(camera2TrackerName, camera2Tracker, &isToolMatrixValid);
+	vtkMatrix4x4::Multiply4x4(camera2Tracker, opticalAxis2Cam, axis2Tracker);
+	camera.x = axis2Tracker->GetElement(0, 3);		// camera w.r.t. tracker. Forms the origin of the line to pixel
+	camera.y = axis2Tracker->GetElement(1, 3);
+	camera.z = axis2Tracker->GetElement(2, 3);
 	return camera;
 
 }
@@ -950,24 +986,16 @@ linalg::EndoPt MainWindow::getCameraPosition()
 linalg::EndoPt MainWindow::getNormalPosition()
 {
 	linalg::EndoPt normal, unitNorm;
-	// 
-	// //Get normals components:
-	// normal.x = rNormal2Tracker->GetElement(0, 0);
-	// normal.y = rNormal2Tracker->GetElement(1, 0);
-	// normal.z = rNormal2Tracker->GetElement(2, 0);
-	// 
+	
 	vtkSmartPointer<vtkMatrix4x4> normal2Tracker = vtkSmartPointer<vtkMatrix4x4>::New();
 
 	bool isToolMatrixValid(false);
-	//origin 2 tracker = laser 2 tracker * normal 2 laser
 	repository->GetTransform(rLaser2TrackerName, rLaser2Tracker, &isToolMatrixValid);
 	vtkMatrix4x4::Multiply4x4(rLaser2Tracker, laser2Normal, normal2Tracker);
 
 	normal.x = normal2Tracker->GetElement(0, 0);
 	normal.y = normal2Tracker->GetElement(1, 0);
 	normal.z = normal2Tracker->GetElement(2, 0);
-
-
 
 	//Normalize vector
 	double norm = sqrt(normal.x*normal.x + normal.y*normal.y + normal.z*normal.z);
@@ -1491,10 +1519,7 @@ vector<cv::Vec4i> MainWindow::detectLaserLine(cv::Mat &laserOff, cv::Mat &laserO
 void MainWindow::framePointsToCloud(cv::Mat &laserOn, cv::Mat &laserOff, int res)//, EndoModel* model)
 {
 	//check if able to transform all entities into tracker space
-	cv::imshow("On", laserOn);
-	cv::imshow("Off", laserOff);
-
-
+	
 	if (!trackReady)
 	{
 		LOG_ERROR("Unable to transform one or many translations");
@@ -1578,9 +1603,14 @@ void MainWindow::framePointsToCloud(cv::Mat &laserOn, cv::Mat &laserOff, int res
 
 linalg::EndoPt MainWindow::getPixelDirection(int row, int col)		//returns pixel location in tracker space
 {
+	vtkSmartPointer<vtkMatrix4x4> axis2Tracker = vtkSmartPointer<vtkMatrix4x4>::New();
+	//Get transform from optical axis 2 tracker
+	vtkMatrix4x4::Multiply4x4(camera2Tracker, opticalAxis2Cam, axis2Tracker); 
 	linalg::EndoPt direction;
+
 	double pixelPrime[3], normPrime[4], result[4];
 	double pixel[3] = { col, row, 1.00 };
+	//Intrinsics^-1 * Q
 	invA->MultiplyPoint(pixel, pixelPrime);
 
 	//normalize and append 0 (for vectors):
@@ -1591,7 +1621,8 @@ linalg::EndoPt MainWindow::getPixelDirection(int row, int col)		//returns pixel 
 	normPrime[3] = 0;
 
 	//convert vector direction into world coordinate system
-	camera2Tracker->MultiplyPoint(normPrime, result);
+	axis2Tracker->MultiplyPoint(normPrime, result);
+
 	double size = sqrt(std::pow(result[0], 2) + std::pow(result[1], 2) + std::pow(result[2], 2));
 	//Copy result to EndoPt data type for handling in linalg::linePtVector
 	direction.x = result[0] / size;

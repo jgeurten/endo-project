@@ -17,6 +17,10 @@
 #include <pcl/surface/mls.h>
 #include <pcl/point_types.h>
 #include <pcl/pcl_exports.h>
+#include <pcl/console/parse.h>
+#include <pcl/io/auto_io.h>
+#include <pcl/io/obj_io.h>
+#include <pcl/io/vtk_lib_io.h>
 
 //VTK Includes:
 #include <vtkCellArray.h>
@@ -191,11 +195,11 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr EndoModel::filterCloud()
 	pcl::PointXYZ pt; 
 	for (int i = 0; i < pointCount ; i++)
 	{	
-		if (sqrt(std::pow(pointCloud->points[i].x - centroid.x, 2)) < 2*SD.x + mean.x)		//if within 2 sd of mean in each direction from the centroid --> ADD
+		if (sqrt(std::pow(pointCloud->points[i].x - centroid.x, 2)) < 3*SD.x + 2*mean.x)		//if within 2 sd of mean in each direction from the centroid --> ADD
 		{
-			if (sqrt(std::pow(pointCloud->points[i].y - centroid.y, 2)) < 2*SD.y +  mean.y)	//will drop ~5% of points
+			if (sqrt(std::pow(pointCloud->points[i].y - centroid.y, 2)) < 3*SD.y + 2 * mean.y)	//will drop ~5% of points
 			{
-				if (sqrt(std::pow(pointCloud->points[i].z - centroid.z, 2)) < 2*SD.z + mean.z)
+				if (sqrt(std::pow(pointCloud->points[i].z - centroid.z, 2)) < 3*SD.z + 2 * mean.z)
 				{
 					pt.x = pointCloud->points[i].x;
 					pt.y = pointCloud->points[i].y;
@@ -215,6 +219,10 @@ void EndoModel::savePointCloudAsPLY(string &filename)
 	if (pointCloud->size() == 0) return;
 	filteredCloud = filterCloud();
 	pcl::io::savePLYFileASCII(filename, *filteredCloud);
+
+	string temp = filename.substr(0, filename.size() - 3);
+	string newFilename = temp + "OBJ";
+	convertCloudToSurface(newFilename);
 }
 
 void EndoModel::savePointCloudAsPCD(string &filename)
@@ -328,71 +336,14 @@ size_t EndoModel::getCloudSize()
 }
 
 void EndoModel::convertCloudToSurface(string &filename)
-{/*
-	//Perform normal estimation 1st
-	pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> norm;
-	pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
-	pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
-
-	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+{
 	
-	cloud->points.resize(pointCloud->size());
-	for (size_t i = 0; i < pointCloud->points.size(); i++) {
-		cloud->points[i].x = pointCloud->points[i].x;
-		cloud->points[i].y = pointCloud->points[i].y;
-		cloud->points[i].z = pointCloud->points[i].z;
-	}
-
-
-	int ksearch = 20;
-	tree->setInputCloud(cloud);
-	norm.setInputCloud(cloud);
-	norm.setSearchMethod(tree);
-
-	norm.setKSearch(ksearch);
-	norm.compute(*normals);
-
-	//Add point cloud and normals:
-	pcl::PointCloud<pcl::PointNormal>::Ptr cloudAndNormals(new pcl::PointCloud<pcl::PointNormal>);
-	pcl::concatenateFields(*cloud, *normals, *cloudAndNormals);
-
-	//Create tree:
-	pcl::search::KdTree<pcl::PointNormal>::Ptr searchTree(new pcl::search::KdTree<pcl::PointNormal>);
-	searchTree->setInputCloud(cloudAndNormals);
-
-	//SEt traingulation params:
-	pcl::GreedyProjectionTriangulation<pcl::PointNormal> gp3;
-	gp3.setSearchRadius(150);					//max search radius between connected pts
-	gp3.setMu(2.0);								//sets multiplier for calc of final search radius
-	gp3.setMaximumSurfaceAngle(M_PI / 4);		// 45 degrees
-	gp3.setMaximumNearestNeighbors(100);
-	gp3.setMinimumAngle(M_PI / 18);				// 10 degrees
-	gp3.setMaximumAngle(2 * M_PI / 3);			// 120 degrees
-	gp3.setNormalConsistency(false);			//consistent normal orientation
-
-	pcl::PolygonMesh _surfaceMesh;
-	//Resultingly:
-	gp3.setInputCloud(cloudAndNormals);
-	gp3.setSearchMethod(searchTree);
-	gp3.reconstruct(_surfaceMesh);
-	
-	*surfaceMesh = _surfaceMesh;			//populate global variable  
-
-
-	*/
-
-	pcl::PointCloud<pcl::PointXYZ>::Ptr pcloud(new pcl::PointCloud<pcl::PointXYZ>);
-	pcl::PCLPointCloud2 cloud_blob;
-	pcl::io::loadPCDFile(filename, cloud_blob);
-	pcl::fromPCLPointCloud2(cloud_blob, *pcloud);
-	//* the data should be available in pcloud
-
 	// Normal estimation*
 	pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> n;
 	pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
 	pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
-	tree->setInputCloud(pcloud);
-	n.setInputCloud(pcloud);
+	tree->setInputCloud(filteredCloud);
+	n.setInputCloud(filteredCloud);
 	n.setSearchMethod(tree);
 	n.setKSearch(20);
 	n.compute(*normals);
@@ -400,7 +351,7 @@ void EndoModel::convertCloudToSurface(string &filename)
 
 	// Concatenate the XYZ and normal fields*
 	pcl::PointCloud<pcl::PointNormal>::Ptr cloud_with_normals(new pcl::PointCloud<pcl::PointNormal>);
-	pcl::concatenateFields(*pcloud, *normals, *cloud_with_normals);
+	pcl::concatenateFields(*filteredCloud, *normals, *cloud_with_normals);
 	//* cloud_with_normals = pcloud + normals
 
 	// Create search tree*
@@ -427,7 +378,7 @@ void EndoModel::convertCloudToSurface(string &filename)
 	gp3.setSearchMethod(tree2);
 	gp3.reconstruct(triangles);
 
-	pcl::io::saveOBJFile(filename, triangles);
+	pcl::io::savePolygonFile(filename, triangles);
 }
 
 void EndoModel::createVTKSurface(string &filename)

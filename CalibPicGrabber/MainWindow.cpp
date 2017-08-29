@@ -99,7 +99,7 @@ void MainWindow::intitCamera()
 		capture.set(CV_CAP_PROP_AUTOFOCUS, 0);	//disable autofocus
 		capture.set(CV_CAP_PROP_FPS, 30);
 
-		setCameraControl();
+		//setCameraControl();
 	}
 
 
@@ -129,12 +129,15 @@ void MainWindow::updateFeed()
 	if (capture.isOpened())
 	{
 		cv::namedWindow("Control", CV_WINDOW_NORMAL);
-		cvCreateTrackbar("Brightness", "Control", &brightness, 40);
-		cvCreateTrackbar("Contrast", "Control", &contrast, 40);
+		cvCreateTrackbar("Brightness", "Control", &brightness, 100);
+		cvCreateTrackbar("Contrast", "Control", &contrast, 100);
+		cvCreateTrackbar("Exposure", "Control", &exposure, 100);
+
 		//cvCreateTrackbar("Focus", "Control", &focus, 1000);
 
 		capture.set(CV_CAP_PROP_CONTRAST, (double)contrast);
 		capture.set(CV_CAP_PROP_BRIGHTNESS, (double)brightness);
+		capture.set(CV_CAP_PROP_EXPOSURE, (double)exposure);
 
 		capture >> feedImg;
 		cv::Size s = feedImg.size();
