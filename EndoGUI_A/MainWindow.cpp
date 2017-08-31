@@ -529,6 +529,41 @@ void MainWindow::createVTKObject()
 
 	vtkMatrix3x3::Invert(intrinsicsMat, invA);
 
+	laser2Normal->SetElement(0, 0, 0.999935);
+	laser2Normal->SetElement(0, 1, 0);
+	laser2Normal->SetElement(0, 2, 0);
+	laser2Normal->SetElement(0, 3, 0);
+	laser2Normal->SetElement(1, 0, 0.00006);
+	laser2Normal->SetElement(1, 1, 1);
+	laser2Normal->SetElement(1, 2, 0);
+	laser2Normal->SetElement(1, 3, 0);
+	laser2Normal->SetElement(2, 0, 0.01137);
+	laser2Normal->SetElement(2, 1, 0);
+	laser2Normal->SetElement(2, 2, 1);
+	laser2Normal->SetElement(2, 3, 0);
+	laser2Normal->SetElement(3, 0, 0);
+	laser2Normal->SetElement(3, 1, 0);
+	laser2Normal->SetElement(3, 2, 0);
+	laser2Normal->SetElement(3, 3, 1);
+
+	laser2Origin->SetElement(0, 0, 1);
+	laser2Origin->SetElement(0, 1, 0);
+	laser2Origin->SetElement(0, 2, 0);
+	laser2Origin->SetElement(0, 3, 2.5526);
+	laser2Origin->SetElement(1, 0, 0);
+	laser2Origin->SetElement(1, 1, 1);
+	laser2Origin->SetElement(1, 2, 0);
+	laser2Origin->SetElement(1, 3, -34.544);
+	laser2Origin->SetElement(2, 0, 0);
+	laser2Origin->SetElement(2, 1, 0);
+	laser2Origin->SetElement(2, 2, 1);
+	laser2Origin->SetElement(2, 3, 500.199119);
+	laser2Origin->SetElement(3, 0, 0);
+	laser2Origin->SetElement(3, 1, 0);
+	laser2Origin->SetElement(3, 2, 0);
+	laser2Origin->SetElement(3, 3, 1);
+	//HANDHELD::
+	/*
 	laser2Normal->SetElement(0, 0, -0.9998151);
 	laser2Normal->SetElement(0, 1, 0);
 	laser2Normal->SetElement(0, 2, 0);
@@ -562,6 +597,8 @@ void MainWindow::createVTKObject()
 	laser2Origin->SetElement(3, 1, 0);
 	laser2Origin->SetElement(3, 2, 0);
 	laser2Origin->SetElement(3, 3, 1);
+
+	*/
 
 	cam2OpticalAxis->SetElement(0, 0, -0.99981);
 	cam2OpticalAxis->SetElement(0, 1, -0.0148);

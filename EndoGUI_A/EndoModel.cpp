@@ -221,8 +221,8 @@ void EndoModel::savePointCloudAsPLY(string &filename)
 	pcl::io::savePLYFileASCII(filename, *filteredCloud);
 
 	string temp = filename.substr(0, filename.size() - 3);
-	string newFilename = temp + "OBJ";
-	convertCloudToSurface(newFilename);
+	string newFilename = temp + "VTK";
+	savePolyLines(newFilename);
 }
 
 void EndoModel::savePointCloudAsPCD(string &filename)
@@ -297,37 +297,10 @@ void EndoModel::savePolyLines(string &filename)
 	cleanFilter->SetInputConnection(append->GetOutputPort());
 	cleanFilter->Update();
 
-	//Create a mapper and actor
-	vtkSmartPointer<vtkPolyDataMapper> mapper =
-		vtkSmartPointer<vtkPolyDataMapper>::New();
-	mapper->SetInputConnection(cleanFilter->GetOutputPort());
-
-	vtkSmartPointer<vtkActor> actor =
-		vtkSmartPointer<vtkActor>::New();
-	actor->SetMapper(mapper);
-
-	//Create a renderer, render window, and interactor
-	vtkSmartPointer<vtkRenderer> renderer =
-		vtkSmartPointer<vtkRenderer>::New();
-	vtkSmartPointer<vtkRenderWindow> renderWindow =
-		vtkSmartPointer<vtkRenderWindow>::New();
-	renderWindow->AddRenderer(renderer);
-	vtkSmartPointer<vtkRenderWindowInteractor> renderWindowInteractor =
-		vtkSmartPointer<vtkRenderWindowInteractor>::New();
-	renderWindowInteractor->SetRenderWindow(renderWindow);
-
-	//Add the actors to the scene
-	renderer->AddActor(actor);
-	renderer->SetBackground(.3, .2, .1); // Background color dark red
-
-										 //Render and interact
-	renderWindow->Render();
-	renderWindowInteractor->Start();
-
-	//vtkSmartPointer<vtkXMLPolyDataWriter> writer = vtkSmartPointer<vtkXMLPolyDataWriter>::New();
-	//writer->SetFileName(filename.c_str());
-	//writer->SetInputData(polyData);
-	//writer->Write();
+	vtkSmartPointer<vtkPolyDataWriter> writer = vtkSmartPointer<vtkPolyDataWriter>::New();
+	writer->SetFileName(filename.c_str()); 
+	writer->SetInputConnection(cleanFilter->GetOutputPort());
+	writer->Write();
 }
 
 size_t EndoModel::getCloudSize()
