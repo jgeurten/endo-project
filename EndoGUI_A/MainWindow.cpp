@@ -528,7 +528,8 @@ void MainWindow::createVTKObject()
 	intrinsicsMat->SetElement(2, 2, 1);
 
 	vtkMatrix3x3::Invert(intrinsicsMat, invA);
-
+	//Endoscope:
+	/*
 	laser2Normal->SetElement(0, 0, 0.999935);
 	laser2Normal->SetElement(0, 1, 0);
 	laser2Normal->SetElement(0, 2, 0);
@@ -562,8 +563,10 @@ void MainWindow::createVTKObject()
 	laser2Origin->SetElement(3, 1, 0);
 	laser2Origin->SetElement(3, 2, 0);
 	laser2Origin->SetElement(3, 3, 1);
+	*/
+	
 	//HANDHELD::
-	/*
+	///*
 	laser2Normal->SetElement(0, 0, -0.9998151);
 	laser2Normal->SetElement(0, 1, 0);
 	laser2Normal->SetElement(0, 2, 0);
@@ -598,7 +601,7 @@ void MainWindow::createVTKObject()
 	laser2Origin->SetElement(3, 2, 0);
 	laser2Origin->SetElement(3, 3, 1);
 
-	*/
+	//*/
 
 	cam2OpticalAxis->SetElement(0, 0, -0.99981);
 	cam2OpticalAxis->SetElement(0, 1, -0.0148);
